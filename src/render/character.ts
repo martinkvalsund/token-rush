@@ -53,6 +53,8 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 export class CharacterAnimator {
   private phase = 0;
   private blink = 0;
+  private lift = 0;
+  private back = 0;
   private readonly hipsRest: number;
 
   constructor(private readonly rig: CharacterRig) {
@@ -82,6 +84,8 @@ export class CharacterAnimator {
     let legL = 0;
     let legR = 0;
     let headY = 0;
+    let lift = 0;
+    let back = 0;
 
     if (pose === 'idle') {
       this.phase += dt;
@@ -105,12 +109,16 @@ export class CharacterAnimator {
       legL = 0.2 + Math.sin(this.phase) * 0.1;
       legR = 0.4 + Math.cos(this.phase) * 0.1;
     } else if (p.sliding) {
-      rootX = 1.15;
-      hipsY = 0.35;
-      armL = armR = -0.9;
-      legL = legR = -0.6;
-      if (p.slideTime < 0.25 && p.rollPending === false && p.airTime > 0.3)
-        rootX += p.slideTime * 20;
+      // Belly slide: body flat and face-down, arms stretched forward, lifted clear of the
+      // ground (no roll, so nothing dips below the road).
+      rootX = 1.5;
+      lift = 0.32;
+      back = 0.95;
+      armL = armR = -2.9;
+      armLz = -0.15;
+      armRz = 0.15;
+      legL = legR = 0.1;
+      headY = 0;
     } else if (!p.grounded) {
       armL = armR = -2.4;
       armLz = -0.4;
@@ -145,6 +153,12 @@ export class CharacterAnimator {
     r.torso.rotation.x = lerp(r.torso.rotation.x, -torsoX, k);
     r.torso.rotation.z = lerp(r.torso.rotation.z, torsoZ, k);
     r.root.rotation.x = lerp(r.root.rotation.x, -rootX, k);
+    // The view places the root at the feet each frame; raise it while lying flat.
+    this.lift = lerp(this.lift, lift, k);
+    r.root.position.y += this.lift;
+    // Lying flat pivots around the feet; slide the body back so it stays centred on the runner.
+    this.back = lerp(this.back, back, k);
+    r.root.position.z += this.back;
     r.root.rotation.z = lerp(r.root.rotation.z, rootZ, k);
     r.armL.rotation.x = lerp(r.armL.rotation.x, armL, k);
     r.armR.rotation.x = lerp(r.armR.rotation.x, armR, k);
