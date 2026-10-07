@@ -1,4 +1,5 @@
 import type { ObstacleId } from './obstacles';
+import { TUNING } from './tuning';
 
 export interface ZoneDef {
   id: string;
@@ -13,6 +14,8 @@ export interface ZoneDef {
   scenery: readonly { model: string; chance: number; minX: number; maxX: number; scale?: number }[];
   /** Repeating structure around the track every N rows (tunnel rings, bridge trusses). */
   frame?: { model: string; everyRows: number };
+  /** Height of the roof over the track in enclosed zones (limits jetpack flight and camera). */
+  ceiling?: number;
   look: {
     skyTop: number;
     skyBottom: number;
@@ -86,6 +89,7 @@ export const ZONES: readonly ZoneDef[] = [
       { model: 'tbm_cutterhead', chance: 0.015, minX: 6.2, maxX: 6.4 },
     ],
     frame: { model: 'tunnel_ring', everyRows: 2 },
+    ceiling: 7,
     look: {
       skyTop: 0x1a1d22,
       skyBottom: 0x2a2e35,
@@ -204,3 +208,11 @@ export const ZONES: readonly ZoneDef[] = [
     music: { root: 53, scale: 'minor' },
   },
 ];
+
+/** Jetpack cruising height in a zone: lower under a tunnel roof. */
+export function flightHeight(zone: number): number {
+  const ceiling = ZONES[zone]?.ceiling;
+  const { jetpackHeight, jetpackCeilingClearance } = TUNING.powerups;
+  if (ceiling === undefined) return jetpackHeight;
+  return Math.min(jetpackHeight, ceiling - TUNING.player.height - jetpackCeilingClearance);
+}

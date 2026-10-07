@@ -1,7 +1,7 @@
 import { TUNING, laneX, type Lane } from '../data/tuning';
 import { OBSTACLE_INDEX, obstacleKind, type ObstacleId } from '../data/obstacles';
 import { ADVANCED_PATTERN_DEFS, PATTERN_DEFS } from '../data/patterns';
-import { ZONES } from '../data/zones';
+import { ZONES, flightHeight } from '../data/zones';
 import { SIGNS } from '../data/signs';
 import type { Rng } from '../core/rng';
 import { buildPatterns, type Pattern, type Row } from './pattern';
@@ -251,8 +251,8 @@ export class Generator {
     // Jetpack sky trail: a line of tokens high above the track.
     if (at < this.skyTrailUntil) {
       const lane = (Math.floor(at / 24) % 3) as Lane;
-      this.addToken(at - 1, laneX(lane), TUNING.powerups.jetpackHeight + 0.9);
-      this.addToken(at + 1, laneX(lane), TUNING.powerups.jetpackHeight + 0.9);
+      this.addToken(at - 1, laneX(lane), flightHeight(zone) + 0.9);
+      this.addToken(at + 1, laneX(lane), flightHeight(zone) + 0.9);
     }
 
     this.emitScenery(at, zone);

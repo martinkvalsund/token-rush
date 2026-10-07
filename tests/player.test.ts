@@ -4,7 +4,7 @@ import { EventQueue } from '../src/sim/events';
 import { createPlayer, playerHeight, queueCommand, stepPlayer } from '../src/sim/player';
 
 const dt = 1 / 60;
-const flat = { superJump: false, groundAt: () => 0 };
+const flat = { superJump: false, groundAt: () => 0, flyHeight: 5.5 };
 
 function run(p: ReturnType<typeof createPlayer>, seconds: number, ctx = flat): number {
   const ev = new EventQueue();
@@ -46,7 +46,7 @@ describe('player', () => {
   it('super jump reaches about 3.4 m', () => {
     const p = createPlayer();
     queueCommand(p, 'jump');
-    const apex = run(p, 1.2, { superJump: true, groundAt: () => 0 });
+    const apex = run(p, 1.2, { superJump: true, groundAt: () => 0, flyHeight: 5.5 });
     expect(apex).toBeGreaterThan(3.1);
     expect(apex).toBeLessThan(3.6);
   });
@@ -84,7 +84,7 @@ describe('player', () => {
   it('allows a coyote jump after walking off a platform', () => {
     const p = createPlayer();
     let h = 2;
-    const ctx = { superJump: false, groundAt: () => h };
+    const ctx = { superJump: false, groundAt: () => h, flyHeight: 5.5 };
     run(p, 0.05, ctx); // climbs onto platform
     h = 0;
     const ev = new EventQueue();

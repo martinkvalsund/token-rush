@@ -14,6 +14,10 @@ import { Generator, type World } from './generator';
 import { Pool } from './pool';
 import { newObstacle, newPickup, newScenery, newToken, type Obstacle } from './entities';
 import { tierAt, zoneAt } from './difficulty';
+import { flightHeight } from '../data/zones';
+
+/** Metres ahead the jetpack looks for a lower ceiling. */
+const FLIGHT_LOOKAHEAD = 45;
 import { classify, groundAt } from './collision';
 import { Powerups, TIMED, rollMystery, type TimedPowerup } from './powerups';
 import { POWERUP_TYPES, type PowerupType } from './entities';
@@ -62,6 +66,7 @@ export class Sim {
   private readonly ctx = {
     superJump: false,
     groundAt: (x: number) => groundAt(this.world.obstacles.items, x, this.player.y),
+    flyHeight: TUNING.powerups.jetpackHeight as number,
   };
 
   constructor(readonly seed: number) {
@@ -143,6 +148,12 @@ export class Sim {
     this.generator.update(this.distance);
     this.updateEntities();
     this.ctx.superJump = this.powerups.active('boots');
+    // Fly low enough for the zone here and the one just ahead, so the runner drops before
+    // a tunnel mouth and only climbs again once out of the tunnel.
+    this.ctx.flyHeight = Math.min(
+      flightHeight(zoneAt(this.distance)),
+      flightHeight(zoneAt(this.distance + FLIGHT_LOOKAHEAD)),
+    );
     this.player.flying = this.powerups.active('jetpack');
     stepPlayer(this.player, dt, this.ctx, this.events);
     this.collide();

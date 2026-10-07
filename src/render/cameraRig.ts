@@ -20,6 +20,8 @@ export class CameraRig {
   /** 0..1 multiplier from the reduce-motion setting. */
   shakeScale = 1;
   menu = true;
+  /** Highest the camera may go (under a tunnel roof); Infinity outdoors. */
+  maxY = Infinity;
 
   constructor() {
     this.camera.position.copy(this.base);
@@ -42,7 +44,8 @@ export class CameraRig {
 
     this.base.x += (position[0] + playerX * 0.6 - this.base.x) * Math.min(1, dt * 8);
     // Follow the player up ramps, roofs and jetpack flights, but not every jump bob.
-    this.base.y += (position[1] + playerY * 0.75 - this.base.y) * Math.min(1, dt * 4);
+    const wantY = Math.min(position[1] + playerY * 0.75, this.maxY);
+    this.base.y += (wantY - this.base.y) * Math.min(1, dt * 4);
     this.base.z = position[2];
     this.look.set(this.base.x * 0.5, lookAt[1] + (this.base.y - position[1]), lookAt[2]);
 

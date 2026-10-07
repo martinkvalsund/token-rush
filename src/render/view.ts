@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { TUNING } from '../data/tuning';
+import { ZONES } from '../data/zones';
+import { zoneAt } from '../sim/difficulty';
 import type { Sim } from '../sim/sim';
 import { CameraRig } from './cameraRig';
 import { Road } from './world';
@@ -237,6 +239,8 @@ export class View {
 
     const { start, max } = TUNING.speed;
     const ratio = (sim.speed - start) / (max - start);
+    const ceiling = ZONES[zoneAt(f.renderDistance)]?.ceiling;
+    this.rig.maxY = ceiling === undefined ? Infinity : ceiling - 1.4;
     this.rig.update(ratio, f.x, f.dt, f.y);
     this.speedLines.update(
       f.dt,
