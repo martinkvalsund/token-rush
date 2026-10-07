@@ -71,3 +71,37 @@ test('the Konami code on the menu unlocks an achievement', async ({ page }) => {
     await page.keyboard.press(k);
   await expect(page.getByText('Achievement unlocked')).toBeVisible();
 });
+
+test('trackpad scheme: a one-finger flick changes lane without clicking', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('/?seed=4');
+  await page.evaluate(() => {
+    localStorage.setItem(
+      'tokenrush:v1',
+      JSON.stringify({ version: 1, settings: { controls: 'trackpad' } }),
+    );
+  });
+  await page.reload();
+  await page.getByRole('button', { name: 'Play', exact: true }).waitFor();
+  await page.mouse.move(640, 360);
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(
+    () =>
+      (window as unknown as { __game: { machine: { state: string } } }).__game.machine.state ===
+      'Playing',
+    undefined,
+    { timeout: 20_000 },
+  );
+  await page.evaluate(() => {
+    (window as unknown as { __game: { sim: { god: boolean } } }).__game.sim.god = true;
+  });
+  await page.waitForTimeout(300);
+  await page.mouse.move(900, 360, { steps: 6 }); // quick flick right, no button pressed
+  await page.waitForTimeout(400);
+  const lane = await page.evaluate(
+    () =>
+      (window as unknown as { __game: { sim: { player: { lane: number } } } }).__game.sim.player
+        .lane,
+  );
+  expect(lane).toBe(2);
+});

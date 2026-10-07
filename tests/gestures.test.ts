@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PointerSwipe, WheelSwipe } from '../src/core/gestures';
+import { FlickSwipe, PointerSwipe, WheelSwipe } from '../src/core/gestures';
 
 /** Simulate a trackpad swipe: a burst of deltas then a decaying inertia tail. */
 function swipe(w: WheelSwipe, dx: number, dy: number, t0: number, out: string[]): number {
@@ -62,5 +62,51 @@ describe('pointer swipe', () => {
     p.up();
     p.down(100, 100);
     expect(p.move(100, 40)).toBe('jump');
+  });
+});
+
+/** Simulate pointer movement: n events 16 ms apart with the given per-event delta. */
+function move(f: FlickSwipe, dx: number, dy: number, n: number, t0: number, out: string[]): number {
+  let t = t0;
+  for (let i = 0; i < n; i++) {
+    const c = f.feed(dx, dy, t);
+    if (c) out.push(c);
+    t += 16;
+  }
+  return t;
+}
+
+describe('one-finger trackpad flick (no click)', () => {
+  it('a quick flick fires exactly one command', () => {
+    const f = new FlickSwipe();
+    const out: string[] = [];
+    let t = move(f, 18, 1, 8, 0, out);
+    t = move(f, 3, 0, 6, t, out);
+    move(f, 0.5, 0, 10, t, out);
+    expect(out).toEqual(['right']);
+  });
+
+  it('maps up to jump and down to slide', () => {
+    const f = new FlickSwipe();
+    const out: string[] = [];
+    let t = move(f, 0, -20, 6, 0, out);
+    t = move(f, 0, 0, 10, t + 150, out);
+    move(f, 0, 20, 6, t + 150, out);
+    expect(out).toEqual(['jump', 'slide']);
+  });
+
+  it('slow drifting never fires', () => {
+    const f = new FlickSwipe();
+    const out: string[] = [];
+    move(f, 2, 1, 300, 0, out);
+    expect(out).toEqual([]);
+  });
+
+  it('two flicks with a short pause fire twice', () => {
+    const f = new FlickSwipe();
+    const out: string[] = [];
+    const t = move(f, -20, 0, 6, 0, out);
+    move(f, -20, 0, 6, t + 300, out);
+    expect(out).toEqual(['left', 'left']);
   });
 });

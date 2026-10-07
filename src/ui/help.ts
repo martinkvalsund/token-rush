@@ -30,6 +30,7 @@ export function buildHelp(onBack: () => void): HTMLElement {
         <span class="kbd">S</span><div>Slide; in the air: fast-fall (or <span class="kbd">↓</span>, swipe down)</div>
         <span class="kbd">Esc</span><div>Pause (<span class="kbd">P</span> too) · <span class="kbd">M</span> mute</div>
       </div>
+      <p><b>Trackpad:</b> choose “Trackpad” in Settings, then just flick one finger left, right, up or down — no clicking, like swiping on a phone. Two-finger swipes work in every mode. Press Esc to get the cursor back.</p>
       <h3>Obstacles</h3>
       <div class="grid">
         ${swatch('repeating-linear-gradient(-45deg,#ffc72c 0 6px,#111 6px 12px)')}<div><b>Low</b> (yellow/black stripes): jump over.</div>

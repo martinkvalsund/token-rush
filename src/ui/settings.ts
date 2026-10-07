@@ -63,8 +63,8 @@ export function buildSettings(
   };
 
   select('Controls', 'controls', [
-    ['keys', 'Keyboard: WASD (+ arrow keys)'],
-    ['trackpad', 'Trackpad swipe (+ keys)'],
+    ['keys', 'Keyboard: WASD / arrows (+ two-finger swipes)'],
+    ['trackpad', 'Trackpad: flick one finger, no click (+ keys)'],
   ]);
   range('Swipe sensitivity', 'swipeSensitivity', 0.25, 3, 0.05);
   range('Master volume', 'masterVolume', 0, 1, 0.05);
