@@ -6,3 +6,4 @@ screenshots
 *.blend1
 .DS_Store
 .env*
+__pycache__

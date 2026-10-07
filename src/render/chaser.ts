@@ -50,35 +50,34 @@ export function conflictTexture(): THREE.CanvasTexture {
 
 export class Chaser {
   readonly group = new THREE.Group();
-  private readonly ball: THREE.Object3D;
+  private readonly spinner = new THREE.Group();
   private readonly radius = 1.6;
 
   constructor(lib: ModelLibrary) {
-    const tex = conflictTexture();
-    const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9, flatShading: true });
+    const mat = new THREE.MeshStandardMaterial({
+      map: conflictTexture(),
+      roughness: 0.9,
+      flatShading: true,
+    });
+    this.spinner.position.y = this.radius;
+    this.group.add(this.spinner);
     if (lib.has('boulder')) {
-      const t = lib.get('boulder');
-      this.ball = t.scene.clone(true);
-      this.ball.traverse((o) => {
-        if (o instanceof THREE.Mesh && o.name.toLowerCase().includes('boulder')) o.material = mat;
-      });
+      const model = lib.get('boulder').scene.clone(true);
+      const ball = model.getObjectByName('boulder_ball');
+      const rubble = model.getObjectByName('boulder_rubble');
+      if (ball instanceof THREE.Mesh) {
+        ball.material = mat;
+        ball.position.y -= this.radius;
+        this.spinner.add(ball);
+      }
+      if (rubble) this.group.add(rubble);
     } else {
-      const geo = new THREE.IcosahedronGeometry(this.radius, 2);
-      this.ball = new THREE.Mesh(geo, mat);
-      this.ball.position.y = this.radius;
+      this.spinner.add(new THREE.Mesh(new THREE.IcosahedronGeometry(this.radius, 2), mat));
     }
-    this.ball.traverse((o) => {
+    this.group.traverse((o) => {
       if (o instanceof THREE.Mesh) o.castShadow = true;
     });
-    const spinner = new THREE.Group();
-    spinner.position.y = this.radius;
-    this.ball.position.y -= this.radius;
-    spinner.add(this.ball);
-    this.group.add(spinner);
-    this.spinner = spinner;
   }
-
-  private readonly spinner: THREE.Group;
 
   update(gap: number, playerX: number, speed: number, dt: number, visible: boolean): void {
     this.group.visible = visible && gap < 13.5;

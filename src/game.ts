@@ -1,23 +1,22 @@
 import * as THREE from 'three';
 import { TUNING } from './data/tuning';
+import { ZONES } from './data/zones';
 import { FixedLoop } from './core/loop';
 import { Input, type Command } from './core/input';
 import { StateMachine, type GameState } from './core/stateMachine';
 import { seedFromUrl } from './core/rng';
 import { Storage } from './core/storage';
 import { Sim } from './sim/sim';
-import { CameraRig } from './render/cameraRig';
-import { Road } from './render/world';
-import { CharacterAnimator, buildGreyboxRig, type Pose } from './render/character';
-import { EntityRenderer } from './render/entities';
+import { TIMED, type TimedPowerup } from './sim/powerups';
+import { POWERUP_TYPES, type PowerupType } from './sim/entities';
 import { ModelLibrary } from './render/models/library';
-import { Chaser } from './render/chaser';
+import { MODEL_NAMES } from './render/models/manifest';
+import { paletteMaterial } from './render/palette';
+import { View } from './render/view';
+import type { Pose } from './render/character';
 import { DebugOverlay } from './ui/debugOverlay';
 import { UI, type UiAction } from './ui/ui';
 import { POWERUP_NAMES } from './ui/icons';
-import { TIMED, type TimedPowerup } from './sim/powerups';
-import { POWERUP_TYPES, type PowerupType } from './sim/entities';
-import { ZONES } from './data/zones';
 
 const GAME_OVER_LINES = [
   'Merge conflict unresolved.',
@@ -31,30 +30,22 @@ export class Game {
   readonly sim: Sim;
   readonly machine = new StateMachine();
   readonly storage = new Storage();
-  private readonly renderer: THREE.WebGLRenderer;
-  private readonly scene = new THREE.Scene();
-  private readonly rig = new CameraRig();
-  private readonly road = new Road();
+  readonly renderer: THREE.WebGLRenderer;
   private readonly params: URLSearchParams;
-  private readonly library = new ModelLibrary((m) => m);
-  private readonly entities = new EntityRenderer(this.library);
-  private readonly chaser = new Chaser(this.library);
+  private readonly library = new ModelLibrary(() => paletteMaterial());
+  private view: View | null = null;
   private readonly input = new Input();
   private readonly loop: FixedLoop;
   private readonly debug: DebugOverlay;
-  private readonly character = buildGreyboxRig();
-  private readonly animator = new CharacterAnimator(this.character);
   private readonly ui = new UI();
   private prevX = 0;
   private prevY = 0;
   private prevDistance = 0;
   private prevGap = 0;
-  private lastDistance = 0;
   private stumbleAge = 99;
   private runCount = 0;
   private countdownLeft = 0;
   private settingsReturn: GameState = 'Menu';
-  private readonly shield: THREE.Mesh;
   private readonly puLeft: Record<TimedPowerup, number> = {
     magnet: 0,
     jetpack: 0,
@@ -67,39 +58,17 @@ export class Game {
   constructor(canvas: HTMLCanvasElement, params: URLSearchParams) {
     this.params = params;
     this.sim = new Sim(seedFromUrl(window.location.search));
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    this.renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.debug = new DebugOverlay(this.renderer, params.get('debug') === '1');
-
-    this.scene.background = new THREE.Color(0x9ec9e8);
-    this.scene.fog = new THREE.Fog(0x9ec9e8, 40, 110);
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0x556677, 1.6));
-    const sun = new THREE.DirectionalLight(0xfff0d0, 2.2);
-    sun.position.set(-8, 14, 6);
-    this.scene.add(
-      sun,
-      this.road.group,
-      this.character.root,
-      this.entities.group,
-      this.chaser.group,
-    );
-
-    this.shield = new THREE.Mesh(
-      new THREE.SphereGeometry(1.25, 24, 16),
-      new THREE.MeshStandardMaterial({
-        color: 0xffe0b2,
-        emissive: 0xffb74d,
-        emissiveIntensity: 0.6,
-        transparent: true,
-        opacity: 0.22,
-        depthWrite: false,
-      }),
-    );
-    this.shield.position.y = 1;
-    this.shield.visible = false;
-    this.character.root.add(this.shield);
     if (params.get('debug') === '1') this.debugKeys();
 
     this.ui.onAction((a) => this.onUi(a));
@@ -117,10 +86,13 @@ export class Game {
       if (document.hidden) this.autoPause();
       this.loop.resetClock();
     });
-    this.resize();
   }
 
-  start(): void {
+  /** Load the Blender models, build the 3D view, then show the menu. */
+  async start(): Promise<void> {
+    await this.library.loadAll(MODEL_NAMES);
+    this.view = new View(this.library);
+    this.resize();
     this.machine.go('Menu');
     this.loop.start();
   }
@@ -135,9 +107,7 @@ export class Game {
       } else if (e.code === 'KeyT') {
         this.loop.timeScale = this.loop.timeScale === 1 ? 0.3 : 1;
       } else if (e.code === 'KeyN') {
-        const len = TUNING.world.zoneLength;
-        sim.distance = (Math.floor(sim.distance / len) + 1) * len - 20;
-        sim.generator.cursor = sim.distance + 20;
+        this.skipToNextZone();
       } else if (e.code === 'KeyK') {
         sim.elapsed += 30;
       } else if (/^Digit[1-6]$/.test(e.code)) {
@@ -145,6 +115,16 @@ export class Game {
         if (t) sim.activate(t);
       }
     });
+  }
+
+  /** Debug/screenshot helper: jump to just before the next zone boundary. */
+  skipToNextZone(): void {
+    const sim = this.sim;
+    const len = TUNING.world.zoneLength;
+    sim.distance = (Math.floor(sim.distance / len) + 1) * len - 20;
+    for (const pool of Object.values(sim.world)) pool.clear();
+    sim.generator.cursor = sim.distance + 20;
+    this.prevDistance = sim.distance;
   }
 
   private autoPause(): void {
@@ -250,9 +230,10 @@ export class Game {
     this.runCount++;
     const fixed = this.params.get('seed');
     this.sim.reset(fixed ? this.sim.seed : (this.sim.seed + this.runCount * 7919) >>> 0);
-    this.prevDistance = this.lastDistance = 0;
+    this.prevDistance = 0;
     this.prevGap = this.sim.gap;
     this.stumbleAge = 99;
+    this.view?.resetScroll();
   }
 
   private update(dt: number): void {
@@ -274,16 +255,16 @@ export class Game {
     if (state === 'Crashing' && this.sim.deadTime > 1.6) this.machine.go('GameOver');
   }
 
-  private consumeEvents(): void {
+  private consumeEvents(view: View): void {
     const ev = this.sim.events;
     for (let i = 0; i < ev.count; i++) {
       const e = ev.get(i);
       if (!e) continue;
       if (e.type === 'stumble') {
-        this.rig.shake(TUNING.camera.shakeStumble);
+        view.rig.shake(TUNING.camera.shakeStumble);
         this.stumbleAge = 0;
       } else if (e.type === 'crash' || e.type === 'caught') {
-        this.rig.shake(TUNING.camera.shakeCrash);
+        view.rig.shake(TUNING.camera.shakeCrash);
       } else if (e.type === 'powerup') {
         const t = e.label as PowerupType;
         if (t === 'mystery') this.ui.toast('Mystery box…', 1.2);
@@ -292,7 +273,7 @@ export class Game {
         if (e.label === 'tokens') this.ui.toast('Token shower!');
         else if (e.label === 'score') this.ui.toast(`+${TUNING.powerups.mysteryScore} score`);
       } else if (e.type === 'shieldBreak') {
-        this.rig.shake(TUNING.camera.shakeStumble);
+        view.rig.shake(TUNING.camera.shakeStumble);
         this.ui.toast('Coffee saved you!');
       } else if (e.type === 'zone') {
         this.ui.toast(ZONES[e.value]?.name ?? '', 2);
@@ -302,84 +283,69 @@ export class Game {
   }
 
   private render(alpha: number, frameDt: number): void {
-    this.consumeEvents();
-    const p = this.sim.player;
-    const x = this.prevX + (p.x - this.prevX) * alpha;
-    const y = this.prevY + (p.y - this.prevY) * alpha;
-    this.character.root.position.set(x, y, 0);
-    this.stumbleAge += frameDt;
+    const view = this.view;
+    if (!view) return;
+    this.consumeEvents(view);
+    const sim = this.sim;
+    const p = sim.player;
     const state = this.machine.state;
+    const dt = state === 'Paused' ? 0 : frameDt;
+    this.stumbleAge += dt;
+
     let pose: Pose = 'run';
     let poseTime = 0;
     if (state === 'Menu' || state === 'Countdown') pose = 'idle';
     else if (p.flying) pose = 'jetpack';
     else if (state === 'Crashing' || state === 'GameOver') {
       pose = 'crash';
-      poseTime = this.sim.deadTime;
+      poseTime = sim.deadTime;
     } else if (this.stumbleAge < 0.6) {
       pose = 'stumble';
       poseTime = this.stumbleAge;
     }
-    const animDt = state === 'Paused' ? 0 : frameDt;
-    const pu = this.sim.powerups;
+    const pu = sim.powerups;
     const jetEnding = pu.active('jetpack') && pu.left.jetpack < TUNING.powerups.jetpackBlink;
-    this.animator.update(
-      p,
-      this.sim.speed,
-      animDt,
+
+    view.update(sim, {
+      x: this.prevX + (p.x - this.prevX) * alpha,
+      y: this.prevY + (p.y - this.prevY) * alpha,
+      renderDistance: this.prevDistance + (sim.distance - this.prevDistance) * alpha,
+      gap: this.prevGap + (sim.gap - this.prevGap) * alpha,
       pose,
       poseTime,
-      this.sim.iframes > 0 || jetEnding,
-    );
-    this.shield.visible = pu.active('shield');
-    if (this.shield.visible)
-      this.shield.scale.setScalar(1 + Math.sin(performance.now() / 180) * 0.03);
-
-    const renderDistance = this.prevDistance + (this.sim.distance - this.prevDistance) * alpha;
-    this.road.scroll(renderDistance - this.lastDistance);
-    this.lastDistance = renderDistance;
-    this.entities.update(this.sim, renderDistance, animDt);
-    const gap = this.prevGap + (this.sim.gap - this.prevGap) * alpha;
-    this.chaser.update(
-      gap,
-      x,
-      Math.max(this.sim.speed, state === 'Crashing' ? 8 : 0),
-      animDt,
-      state !== 'Menu',
-    );
-
-    const { start, max } = TUNING.speed;
-    this.rig.update((this.sim.speed - start) / (max - start), x, frameDt, y);
-    this.renderer.render(this.scene, this.rig.camera);
+      blink: sim.iframes > 0 || jetEnding,
+      dt,
+      showChaser: state !== 'Menu',
+    });
+    this.renderer.render(view.scene, view.rig.camera);
 
     if (state === 'Playing' || state === 'Countdown' || state === 'Crashing') {
-      const s = this.sim;
       this.ui.updateHud({
-        score: s.score,
-        distance: s.distance,
-        tokens: s.tokens,
-        lives: s.lives,
-        multiplier: s.multiplier,
+        score: sim.score,
+        distance: sim.distance,
+        tokens: sim.tokens,
+        lives: sim.lives,
+        multiplier: sim.multiplier,
       });
-      for (const t of TIMED) this.puLeft[t] = s.powerups.fraction(t);
+      for (const t of TIMED) this.puLeft[t] = pu.fraction(t);
       this.puBlink.jetpack = jetEnding;
       this.ui.updatePowerups(this.puLeft, this.puBlink);
     }
     this.debug.update(frameDt, {
-      speed: this.sim.speed,
-      distance: this.sim.distance,
+      speed: sim.speed,
+      distance: sim.distance,
       state,
-      tier: this.sim.tier,
-      zone: this.sim.zone,
-      gap: this.sim.gap,
-      pattern: this.sim.generator.currentPatternId,
-      obstacles: this.sim.world.obstacles.countActive(),
-      tokens: this.sim.world.tokens.countActive(),
+      tier: sim.tier,
+      zone: sim.zone,
+      gap: sim.gap,
+      pattern: sim.generator.currentPatternId,
+      obstacles: sim.world.obstacles.countActive(),
+      tokens: sim.world.tokens.countActive(),
     });
   }
 
   private resize(): void {
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-    this.rig.resize(window.innerWidth, window.innerHeight);
+    this.view?.rig.resize(window.innerWidth, window.innerHeight);
   }
 }

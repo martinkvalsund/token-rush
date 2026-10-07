@@ -1,0 +1,290 @@
+{
+ "size": 8,
+ "colors": [
+  {
+   "name": "yellow",
+   "hex": "#FFC72C",
+   "emissive": false
+  },
+  {
+   "name": "yellow_dark",
+   "hex": "#C99A0E",
+   "emissive": false
+  },
+  {
+   "name": "orange",
+   "hex": "#FF6B1A",
+   "emissive": false
+  },
+  {
+   "name": "orange_dark",
+   "hex": "#B84A0C",
+   "emissive": false
+  },
+  {
+   "name": "lime",
+   "hex": "#C6FF00",
+   "emissive": false
+  },
+  {
+   "name": "white",
+   "hex": "#F2F2EE",
+   "emissive": false
+  },
+  {
+   "name": "off_white",
+   "hex": "#D9D6CF",
+   "emissive": false
+  },
+  {
+   "name": "black",
+   "hex": "#1C1E22",
+   "emissive": false
+  },
+  {
+   "name": "dark_grey",
+   "hex": "#3A3F47",
+   "emissive": false
+  },
+  {
+   "name": "grey",
+   "hex": "#6B717A",
+   "emissive": false
+  },
+  {
+   "name": "light_grey",
+   "hex": "#A3A8AF",
+   "emissive": false
+  },
+  {
+   "name": "concrete",
+   "hex": "#B9B3A8",
+   "emissive": false
+  },
+  {
+   "name": "concrete_dark",
+   "hex": "#8C877E",
+   "emissive": false
+  },
+  {
+   "name": "steel_blue",
+   "hex": "#4A6C8C",
+   "emissive": false
+  },
+  {
+   "name": "steel_blue_dark",
+   "hex": "#2F4760",
+   "emissive": false
+  },
+  {
+   "name": "red",
+   "hex": "#D9302C",
+   "emissive": false
+  },
+  {
+   "name": "red_dark",
+   "hex": "#8E1D1A",
+   "emissive": false
+  },
+  {
+   "name": "brown",
+   "hex": "#7A4E2D",
+   "emissive": false
+  },
+  {
+   "name": "brown_dark",
+   "hex": "#4B2E1A",
+   "emissive": false
+  },
+  {
+   "name": "wood",
+   "hex": "#B98552",
+   "emissive": false
+  },
+  {
+   "name": "tan",
+   "hex": "#C9A66B",
+   "emissive": false
+  },
+  {
+   "name": "skin",
+   "hex": "#E8B48A",
+   "emissive": false
+  },
+  {
+   "name": "hair",
+   "hex": "#3B2A1E",
+   "emissive": false
+  },
+  {
+   "name": "denim",
+   "hex": "#2F3D5C",
+   "emissive": false
+  },
+  {
+   "name": "rubber",
+   "hex": "#2A2A2A",
+   "emissive": false
+  },
+  {
+   "name": "rust",
+   "hex": "#8A4B2A",
+   "emissive": false
+  },
+  {
+   "name": "rock",
+   "hex": "#7D7166",
+   "emissive": false
+  },
+  {
+   "name": "rock_dark",
+   "hex": "#5A5049",
+   "emissive": false
+  },
+  {
+   "name": "glass",
+   "hex": "#8FB8CC",
+   "emissive": false
+  },
+  {
+   "name": "green",
+   "hex": "#3E8E41",
+   "emissive": false
+  },
+  {
+   "name": "blue",
+   "hex": "#2F6FD6",
+   "emissive": false
+  },
+  {
+   "name": "navy",
+   "hex": "#1F2A44",
+   "emissive": false
+  },
+  {
+   "name": "coral",
+   "hex": "#FF7A59",
+   "emissive": false
+  },
+  {
+   "name": "cream",
+   "hex": "#F3E6CF",
+   "emissive": false
+  },
+  {
+   "name": "gold",
+   "hex": "#FFC83D",
+   "emissive": false
+  },
+  {
+   "name": "gold_dark",
+   "hex": "#B8860B",
+   "emissive": false
+  },
+  {
+   "name": "purple",
+   "hex": "#6A4FB3",
+   "emissive": false
+  },
+  {
+   "name": "sand",
+   "hex": "#D8C08A",
+   "emissive": false
+  },
+  {
+   "name": "dirt",
+   "hex": "#8C6E4E",
+   "emissive": false
+  },
+  {
+   "name": "asphalt",
+   "hex": "#3B3F46",
+   "emissive": false
+  },
+  {
+   "name": "safety_green",
+   "hex": "#2EB82E",
+   "emissive": false
+  },
+  {
+   "name": "teal",
+   "hex": "#2A9D8F",
+   "emissive": false
+  },
+  {
+   "name": "pink",
+   "hex": "#E86A92",
+   "emissive": false
+  },
+  {
+   "name": "silver",
+   "hex": "#C8CCD2",
+   "emissive": false
+  },
+  {
+   "name": "water",
+   "hex": "#1E4D6B",
+   "emissive": false
+  },
+  {
+   "name": "night_steel",
+   "hex": "#3B4A63",
+   "emissive": false
+  },
+  {
+   "name": "canvas",
+   "hex": "#E9E4D8",
+   "emissive": false
+  },
+  {
+   "name": "sign_blue",
+   "hex": "#1F5FBF",
+   "emissive": false
+  },
+  {
+   "name": "glow_lamp",
+   "hex": "#FFE7A0",
+   "emissive": true
+  },
+  {
+   "name": "glow_amber",
+   "hex": "#FFB000",
+   "emissive": true
+  },
+  {
+   "name": "glow_screen",
+   "hex": "#5AD1FF",
+   "emissive": true
+  },
+  {
+   "name": "glow_lime",
+   "hex": "#C6FF00",
+   "emissive": true
+  },
+  {
+   "name": "glow_coral",
+   "hex": "#FF7A59",
+   "emissive": true
+  },
+  {
+   "name": "glow_gold",
+   "hex": "#FFD54F",
+   "emissive": true
+  },
+  {
+   "name": "glow_red",
+   "hex": "#FF3B30",
+   "emissive": true
+  },
+  {
+   "name": "glow_white",
+   "hex": "#FFFFFF",
+   "emissive": true
+  },
+  {
+   "name": "glow_orange",
+   "hex": "#FF8A1A",
+   "emissive": true
+  }
+ ]
+}

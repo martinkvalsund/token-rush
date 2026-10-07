@@ -7,7 +7,7 @@
 - [x] Phase 4 — Obstacles, collisions, lives, chaser
 - [x] Phase 5 — Tokens, scoring, HUD, persistence
 - [x] Phase 6 — Power-ups
-- [ ] Phase 7 — Blender art pass and zones
+- [x] Phase 7 — Blender art pass and zones (all five zones incl. bridge)
 - [ ] Phase 8 — Advanced mechanics
 - [ ] Phase 9 — Audio
 - [x] Phase 10 — UI, juice, post-processing, settings
