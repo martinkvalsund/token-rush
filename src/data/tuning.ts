@@ -4,7 +4,7 @@ export const COMPANY_NAME = 'Digital Construction Co.';
 
 export const TUNING = {
   world: { laneX: [-2.4, 0, 2.4] as const, rowSpacing: 4, spawnDistance: 90 },
-  speed: { start: 14, max: 32, timeConstant: 55 },
+  speed: { start: 14, max: 32, timeConstant: 50 },
   player: {
     laneChangeTime: 0.12,
     gravity: 28,
