@@ -36,6 +36,8 @@ export interface PlayerContext {
   superJump: boolean;
   /** Support height at x for the player at z = 0 (0 = ground, else ramp/platform top). */
   groundAt: (x: number) => number;
+  /** Jetpack cruising height (lower in enclosed zones). */
+  flyHeight: number;
 }
 
 const P = TUNING.player;
@@ -181,7 +183,7 @@ export function stepPlayer(p: PlayerState, dt: number, ctx: PlayerContext, ev: E
   const ground = ctx.groundAt(p.x);
 
   if (p.flying) {
-    const target = TUNING.powerups.jetpackHeight;
+    const target = ctx.flyHeight;
     p.y += (target - p.y) * Math.min(1, dt * 4);
     p.vy = 0;
     p.grounded = false;

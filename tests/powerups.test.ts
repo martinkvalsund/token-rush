@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Sim } from '../src/sim/sim';
 import { TUNING } from '../src/data/tuning';
+import { ZONES } from '../src/data/zones';
 import { Powerups, rollMystery } from '../src/sim/powerups';
 import type { PowerupType } from '../src/sim/entities';
 
@@ -144,5 +145,43 @@ describe('power-ups', () => {
     expect(spawned.length).toBeGreaterThanOrEqual(8);
     for (let i = 1; i < spawned.length; i++) expect(spawned[i]).not.toBe(spawned[i - 1]);
     expect(seen.length).toBeGreaterThan(0);
+  });
+});
+
+describe('jetpack in the tunnel', () => {
+  it('flies under the tunnel roof and climbs again outdoors', () => {
+    const sim = new Sim(8);
+    sim.god = true;
+    const tunnelStart = TUNING.world.zoneLength; // zone 1 is the tunnel
+    sim.distance = tunnelStart + 50;
+    for (const pool of Object.values(sim.world)) pool.clear();
+    sim.generator.cursor = 1e9;
+    sim.activate('jetpack');
+    let maxHead = 0;
+    for (let t = 0; t < 3; t += dt) {
+      sim.step(dt);
+      sim.events.clear();
+      maxHead = Math.max(maxHead, sim.player.y + TUNING.player.height);
+    }
+    const ceiling = ZONES[1]?.ceiling ?? 0;
+    expect(maxHead).toBeLessThan(ceiling - 1);
+    expect(sim.player.y).toBeGreaterThan(3); // still above the tallest tunnel obstacles
+  });
+
+  it('drops before reaching a tunnel mouth', () => {
+    const sim = new Sim(8);
+    sim.god = true;
+    sim.distance = TUNING.world.zoneLength - 60;
+    for (const pool of Object.values(sim.world)) pool.clear();
+    sim.generator.cursor = 1e9;
+    sim.activate('jetpack');
+    let headAtMouth = 99;
+    while (sim.distance < TUNING.world.zoneLength + 5 && sim.powerups.active('jetpack')) {
+      sim.step(dt);
+      sim.events.clear();
+      if (sim.distance >= TUNING.world.zoneLength)
+        headAtMouth = sim.player.y + TUNING.player.height;
+    }
+    expect(headAtMouth).toBeLessThan((ZONES[1]?.ceiling ?? 0) - 1);
   });
 });

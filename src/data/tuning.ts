@@ -61,6 +61,8 @@ export const TUNING = {
     magnet: 12,
     jetpack: 7,
     jetpackHeight: 5.5,
+    /** Headroom kept between the flying player's head and an enclosed zone's ceiling. */
+    jetpackCeilingClearance: 1.6,
     jetpackBlink: 1.5,
     jetpackLandIFrames: 1,
     shieldMax: 20,
