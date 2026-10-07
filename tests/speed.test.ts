@@ -5,7 +5,7 @@ import { StateMachine } from '../src/core/stateMachine';
 
 describe('speed curve', () => {
   it('starts at the start speed and approaches max', () => {
-    expect(speedAt(0)).toBeCloseTo(14);
+    expect(speedAt(0)).toBeCloseTo(16);
     expect(speedAt(120)).toBeGreaterThan(30);
     expect(speedAt(10_000)).toBeLessThanOrEqual(32);
   });

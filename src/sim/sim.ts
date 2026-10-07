@@ -177,6 +177,9 @@ export class Sim {
       this.player.rollPending = false;
       this.player.fastFall = false;
       this.generator.skyTrailUntil = this.generator.cursor + this.speed * TUNING.powerups.jetpack;
+      // Flight + soft descent + a couple of seconds to react after touching down.
+      const landing = this.distance + this.speed * (TUNING.powerups.jetpack + 3.5);
+      this.generator.anyLaneUntil = Math.max(this.generator.anyLaneUntil, landing);
     }
     this.events.push('powerup', POWERUP_TYPES.indexOf(type), type);
   }

@@ -37,15 +37,18 @@ describe('autoplay bot', () => {
     expect(deaths).toEqual([]);
   });
 
-  it('reaches top speed and tier 8 after about two minutes', { timeout: 60_000 }, () => {
-    const { sim } = runBot(42, 125);
-    expect(sim.tier).toBe(8);
-    expect(sim.speed).toBeGreaterThanOrEqual(30);
-  });
+  it(
+    'reaches tier 8 and near top speed after about a minute and a quarter',
+    { timeout: 60_000 },
+    () => {
+      const { sim } = runBot(42, 75);
+      expect(sim.tier).toBe(8);
+      expect(sim.speed).toBeGreaterThanOrEqual(30);
+    },
+  );
 
-  // Long soak: npm run soak (24 seeds x 4 minutes). Known residual: seed 114 dies at ~4 km
-  // (tier 8) on stacked overhead bars that one long slide covers at some speeds but not
-  // others. See PROGRESS.md.
+  // Long soak: npm run soak (24 seeds x 4 minutes). Known residual: one seed dies at the top
+  // tier on speed-dependent timing edge cases. See PROGRESS.md.
   it.skipIf(!env.SOAK)('soak: 24 seeds x 4 minutes', { timeout: 900_000 }, () => {
     const deaths: string[] = [];
     for (let seed = 100; seed < 124; seed++) {

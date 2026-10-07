@@ -25,6 +25,7 @@ const REST = PATTERNS.find((p) => p.id === 'rest-line-c');
 const EMPTY_ROW: Row = ['.', '.', '.'];
 /** How far past its due distance a power-up may wait for a 'P' spot before being placed anyway. */
 const POWERUP_SLACK = 120;
+const ANY_LANE: readonly PlanState[] = startStates();
 const GATE_ROWS: readonly Row[] = [EMPTY_ROW, EMPTY_ROW, EMPTY_ROW];
 
 export interface EmittedRow {
@@ -60,6 +61,11 @@ export class Generator {
   readonly spawnedPowerups: PowerupType[] = [];
   /** Distance at which the jetpack sky trail ends; tokens are laid at height until then. */
   skyTrailUntil = 0;
+  /**
+   * Until this track position the player may come down from a jetpack in any lane, so new
+   * patterns must be passable from every lane rather than from the tracked states.
+   */
+  anyLaneUntil = 0;
 
   constructor(
     private readonly world: World,
@@ -81,6 +87,7 @@ export class Generator {
     this.history.length = 0;
     this.spawnedPowerups.length = 0;
     this.skyTrailUntil = 0;
+    this.anyLaneUntil = 0;
   }
 
   /** Emit rows until the spawn horizon is filled. */
@@ -156,7 +163,7 @@ export class Generator {
       let ok = true;
       for (let i = 0; i < timings.length && ok; i++) {
         const tm = timings[i];
-        const from = this.states[i] ?? startStates();
+        const from = this.cursor < this.anyLaneUntil ? ANY_LANE : (this.states[i] ?? startStates());
         if (!tm) continue;
         const end = propagate(ctx, from, tm, 1);
         ok = end.length > 0 && fromEveryCalmLane(ctx, from, tm);
