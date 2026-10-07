@@ -26,6 +26,10 @@ import { ShopScreen } from './ui/shop';
 import { SHOP_ITEMS } from './data/shop';
 import { loadoutItems, sanitizeLoadout } from './core/shop';
 import { renderThumbnails } from './render/thumbnails';
+import { LeaderboardClient } from './core/leaderboardClient';
+import { cleanName } from './core/scoreRules';
+import { LeaderboardScreen, nameField } from './ui/leaderboard';
+import { ICON_TROPHY } from './ui/icons';
 import { UI, type UiAction } from './ui/ui';
 import { POWERUP_NAMES } from './ui/icons';
 import { AudioEngine } from './audio/engine';
@@ -88,7 +92,7 @@ export class Game {
       this.storage.save();
       this.ui.setSave(this.storage.data);
     },
-    thumbnails: () => renderThumbnails(this.library, SHOP_ITEMS),
+    thumbnails: () => this.thumbnails(),
     onBuy: (item) => {
       this.sfx.fanfare();
       this.ui.toast(`${item.name} unlocked!`, 1.8);
@@ -102,6 +106,19 @@ export class Game {
     click: () => this.sfx.click(),
     back: () => this.onUi('back'),
   });
+  private thumbCache: Map<string, string> | null = null;
+  private readonly api = new LeaderboardClient();
+  private readonly board = new LeaderboardScreen({
+    load: () => this.api.top(this.storage.playerId()),
+    name: () => this.storage.data.playerName,
+    rename: (name) => this.setName(name),
+    thumbnails: () => this.thumbnails(),
+    click: () => this.sfx.click(),
+    back: () => this.onUi('back'),
+  });
+  /** The finished run, kept for posting to the leaderboard from the game-over panel. */
+  private lastRun: { score: number; distance: number; tokens: number; seconds: number } | null =
+    null;
 
   constructor(canvas: HTMLCanvasElement, params: URLSearchParams) {
     this.params = params;
@@ -131,6 +148,7 @@ export class Game {
     this.ui.setSave(this.storage.data);
     this.applyAudioSettings();
     this.ui.addScreen('shop', this.shop.el);
+    this.ui.addScreen('leaderboard', this.board.el);
     this.ui.addScreen(
       'settings',
       buildSettings(
@@ -197,6 +215,115 @@ export class Game {
     this.machine.go('Menu');
     this.loop.start();
     this.ui.loading(null);
+  }
+
+  /** Shop card pictures of the Blender models, rendered once on first use. */
+  private thumbnails(): Map<string, string> {
+    this.thumbCache ??= renderThumbnails(this.library, SHOP_ITEMS);
+    return this.thumbCache;
+  }
+
+  /** Autoplay and debug runs never reach the global leaderboard. */
+  private get canPost(): boolean {
+    return !this.bot && this.params.get('debug') !== '1';
+  }
+
+  /** Set the display name locally and, if the player is already on the board, there too. */
+  private async setName(raw: string): Promise<string | null> {
+    const name = cleanName(raw);
+    if (!name) return 'That name is not allowed.';
+    const d = this.storage.data;
+    d.playerName = name;
+    this.storage.save();
+    if (d.postedBest <= 0) return null;
+    const r = await this.api.rename(this.storage.playerId(), name);
+    if (r.ok) return null;
+    return r.error === 'offline'
+      ? 'Saved here. The board is offline right now.'
+      : `Could not rename (${r.error}).`;
+  }
+
+  /** Game-over leaderboard slot: ask for a name, or post the run if it beats the board best. */
+  private boardAfterRun(): void {
+    const el = this.ui.runBoardEl;
+    el.innerHTML = '';
+    const run = this.lastRun;
+    if (!run || !this.canPost || run.score < 1) return;
+    const d = this.storage.data;
+    if (!d.playerName) {
+      const label = document.createElement('small');
+      label.className = 'lb-label';
+      label.textContent = 'Put this run on the global leaderboard';
+      el.append(
+        label,
+        nameField('', 'Post score', async (name) => {
+          const err = await this.setName(name);
+          if (!err) void this.postRun();
+          return err;
+        }),
+      );
+      return;
+    }
+    if (run.score > d.postedBest) void this.postRun();
+    else
+      this.boardStatus(
+        `Your board best is <b>${run.score === d.postedBest ? 'this run' : d.postedBest.toLocaleString('en-US')}</b>`,
+      );
+  }
+
+  private boardStatus(html: string, error = false): void {
+    const el = this.ui.runBoardEl;
+    el.innerHTML = '';
+    const row = document.createElement('div');
+    row.className = `posted${error ? ' err' : ''}`;
+    row.innerHTML = `${ICON_TROPHY}<span>${html}</span>`;
+    const view = document.createElement('button');
+    view.type = 'button';
+    view.className = 'btn secondary';
+    view.textContent = 'View leaderboard';
+    view.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.sfx.click();
+      this.onUi('leaderboard');
+    });
+    el.append(row, view);
+  }
+
+  private async postRun(): Promise<void> {
+    const run = this.lastRun;
+    if (!run) return;
+    this.lastRun = null;
+    const d = this.storage.data;
+    this.boardStatus('Posting to the leaderboard…');
+    const res = await this.api.submit({
+      id: this.storage.playerId(),
+      name: d.playerName,
+      ...run,
+      hat: d.loadout.hat,
+      outfit: d.loadout.outfit,
+    });
+    if (this.machine.state !== 'GameOver') return;
+    if (!res.ok) {
+      this.boardStatus(
+        res.error === 'offline'
+          ? 'The leaderboard is offline. Your score is saved here.'
+          : `The leaderboard said no (${res.error}).`,
+        true,
+      );
+      return;
+    }
+    const { rank, improved, best } = res.data;
+    d.postedBest = Math.max(d.postedBest, best);
+    this.storage.save();
+    const place = `<b>#${rank.toLocaleString('en-US')}</b> worldwide`;
+    this.boardStatus(improved ? `New board best · ${place}` : `Your best is ${place}`);
+    if (improved && rank <= 10) {
+      this.sfx.fanfare();
+      this.ui.toast(
+        rank === 1 ? 'Number one on the leaderboard!' : `Top ${rank} on the leaderboard!`,
+        2.4,
+      );
+    }
   }
 
   /** Put the equipped shop cosmetics on the character. */
@@ -328,6 +455,12 @@ export class Game {
       case 'GameOver': {
         const s = this.sim;
         const newBest = this.storage.recordRun(s.score, s.distance, s.tokens);
+        this.lastRun = {
+          score: Math.floor(s.score),
+          distance: Math.floor(s.distance),
+          tokens: s.tokens,
+          seconds: Math.ceil(s.elapsed),
+        };
         if (newBest && s.score > 0) {
           this.sfx.fanfare();
           if (!this.storage.data.settings.reduceMotion) this.ui.confetti();
@@ -341,6 +474,7 @@ export class Game {
           wallet: this.storage.data.wallet,
           message: GAME_OVER_LINES[s.rng.int(0, GAME_OVER_LINES.length - 1)] ?? '',
         });
+        this.boardAfterRun();
         break;
       }
       default:
@@ -380,6 +514,12 @@ export class Game {
         if (this.view) this.view.rig.showcase = true;
         this.ui.show('shop');
         this.shop.open();
+        break;
+      case 'leaderboard':
+        if (state !== 'Menu') this.machine.go('Menu');
+        this.settingsReturn = 'Menu';
+        this.ui.show('leaderboard');
+        this.board.open();
         break;
       case 'back':
         if (this.ui.screen === 'shop') {

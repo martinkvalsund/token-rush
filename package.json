@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p worker",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
@@ -17,7 +17,8 @@
     "balance": "BALANCE=1 vitest run tests/bot.test.ts",
     "test:safari": "playwright test --project=webkit e2e/smoke.spec.ts e2e/bot.spec.ts",
     "media": "MEDIA=1 playwright test --project=chromium e2e/media.spec.ts && node scripts/make-gif.mjs",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler d1 migrations apply token-rush-leaderboard --remote && wrangler deploy",
+    "dev:full": "npm run build && wrangler d1 migrations apply token-rush-leaderboard --local && wrangler dev"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
@@ -25,6 +26,7 @@
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261007.1",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
     "@types/pngjs": "^6.0.5",

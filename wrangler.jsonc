@@ -1,10 +1,31 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  // Static-assets-only Worker: serves the Vite build in dist/ (no server code).
+  // The Vite build in dist/ is served as static assets. Only /api/* runs the Worker
+  // (worker/index.ts): the global leaderboard, stored in D1.
   "name": "token-rush",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-10-01",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
-  }
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "token-rush-leaderboard",
+      "database_id": "5f089c82-671b-466b-b2ce-bfc97e4236e1",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Per-IP limit on leaderboard writes.
+  "ratelimits": [
+    {
+      "name": "WRITE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 12, "period": 60 }
+    }
+  ],
+  "observability": { "enabled": true }
 }
