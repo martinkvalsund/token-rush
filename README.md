@@ -2,6 +2,8 @@
 
 A 3D endless runner for the browser, built with three.js and TypeScript. You play a developer sprinting through construction and infrastructure sites, collecting **tokens** so you can afford to prompt the AI, dodging site traffic and staying ahead of a rolling boulder of **tech debt**.
 
+**▶ Play it in the browser: https://token-rush.token-rush.workers.dev**
+
 ![Gameplay](docs/media/gameplay.gif)
 
 > Unaffiliated with any employer or brand. All models, sounds and music are original and made for this project (models in Blender, audio synthesised at runtime).
@@ -61,6 +63,7 @@ Trackpad play needs no clicking, like swiping on a phone: in the Trackpad scheme
 | `npm run soak` | Perfect autoplay bot, 24 seeds × 4 minutes (fairness soak) |
 | `npm run balance` | Non-perfect bot, median run length (difficulty target) |
 | `npm run media` | Regenerates the README screenshots and GIF |
+| `npm run deploy` | Builds and deploys to Cloudflare Workers (static assets, `wrangler.jsonc`); needs `npx wrangler login` |
 
 URL flags: `?seed=123` (reproducible run), `?debug=1` (overlay plus hotkeys: G god mode, 1–6 power-ups, T slow motion, N next zone, K faster), `?bot=1` (autoplay).
 

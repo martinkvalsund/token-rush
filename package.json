@@ -16,7 +16,8 @@
     "soak": "SOAK=1 vitest run tests/bot.test.ts",
     "balance": "BALANCE=1 vitest run tests/bot.test.ts",
     "test:safari": "playwright test --project=webkit e2e/smoke.spec.ts e2e/bot.spec.ts",
-    "media": "MEDIA=1 playwright test --project=chromium e2e/media.spec.ts && node scripts/make-gif.mjs"
+    "media": "MEDIA=1 playwright test --project=chromium e2e/media.spec.ts && node scripts/make-gif.mjs",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "@fontsource/rajdhani": "^5.3.0",
@@ -34,6 +35,7 @@
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.1",
     "vite": "^8.3.3",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "wrangler": "^4.148.0"
   }
 }
