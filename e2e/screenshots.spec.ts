@@ -1,6 +1,7 @@
 import { test, type Page } from '@playwright/test';
 
 type G = {
+  skipToNextZone: () => void;
   machine: { state: string; go: (s: string) => boolean };
   sim: {
     god: boolean;
@@ -34,6 +35,11 @@ test('capture screenshots', async ({ page }) => {
   await page.evaluate(() => (window as unknown as { __game: G }).__game.sim.activate('jetpack'));
   await page.waitForTimeout(2000);
   await shot(page, 'jetpack');
+  for (let z = 1; z <= 4; z++) {
+    await page.evaluate(() => (window as unknown as { __game: G }).__game.skipToNextZone());
+    await page.waitForTimeout(3500);
+    await shot(page, `zone-${z}`);
+  }
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
   await shot(page, 'pause');

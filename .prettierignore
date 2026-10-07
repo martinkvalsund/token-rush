@@ -3,3 +3,4 @@ node_modules
 package-lock.json
 public/models
 src/data/patterns.ts
+art/blender/*.py

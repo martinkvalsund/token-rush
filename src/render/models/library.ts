@@ -50,16 +50,18 @@ export class ModelLibrary {
     return !!t && !t.fallback;
   }
 
+  /** The model, or a coloured box of the given size (bottom = height of its underside). */
   get(
     name: string,
     fallbackSize: [number, number, number] = [1, 1, 1],
     color = 0xff00ff,
+    bottom = 0,
   ): ModelTemplate {
     const t = this.templates.get(name);
     if (t) return t;
     const [w, h, d] = fallbackSize;
     const geometry = new THREE.BoxGeometry(w, h, d);
-    geometry.translate(0, h / 2, 0);
+    geometry.translate(0, bottom + h / 2, 0);
     const material = new THREE.MeshStandardMaterial({ color, flatShading: true });
     const scene = new THREE.Mesh(geometry, material);
     const fb: ModelTemplate = {
@@ -77,9 +79,8 @@ export class ModelLibrary {
     const parts: ModelPart[] = [];
     root.traverse((o) => {
       if (o instanceof THREE.Mesh) {
-        const mats = Array.isArray(o.material) ? o.material : [o.material];
-        const mat = mats[0] as THREE.Material;
-        const material = this.materialFor(mat, o.name);
+        const mats: THREE.Material[] = Array.isArray(o.material) ? o.material : [o.material];
+        const material = this.materialFor(mats[0] ?? new THREE.MeshStandardMaterial(), o.name);
         o.material = material;
         o.castShadow = true;
         o.receiveShadow = true;

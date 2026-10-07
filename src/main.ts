@@ -8,6 +8,6 @@ document.title = GAME_TITLE;
 const canvas = document.querySelector<HTMLCanvasElement>('#game');
 if (!canvas) throw new Error('canvas #game missing');
 const game = new Game(canvas, new URLSearchParams(window.location.search));
-game.start();
+void game.start();
 // Exposed for Playwright screenshots and debugging.
 (window as unknown as { __game: Game }).__game = game;

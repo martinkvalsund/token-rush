@@ -53,8 +53,11 @@ const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 export class CharacterAnimator {
   private phase = 0;
   private blink = 0;
+  private readonly hipsRest: number;
 
-  constructor(private readonly rig: CharacterRig) {}
+  constructor(private readonly rig: CharacterRig) {
+    this.hipsRest = rig.hips.position.y;
+  }
 
   update(
     p: PlayerState,
@@ -66,7 +69,8 @@ export class CharacterAnimator {
   ): void {
     const r = this.rig;
     const k = Math.min(1, dt * 14);
-    let hipsY = 0.9;
+    const rest = this.hipsRest;
+    let hipsY = rest;
     let torsoX = 0;
     const torsoZ = 0;
     let rootX = 0;
@@ -82,14 +86,14 @@ export class CharacterAnimator {
     if (pose === 'idle') {
       this.phase += dt;
       const b = Math.sin(this.phase * 2) * 0.02;
-      hipsY = 0.9 + b;
+      hipsY = rest + b;
       armLz = -0.1;
       armRz = 0.1;
       headY = Math.sin(this.phase * 0.6) * 0.5;
     } else if (pose === 'crash') {
       const t = Math.min(1, poseTime * 2.5);
       rootX = -t * 1.4;
-      hipsY = lerp(0.9, 0.35, t);
+      hipsY = lerp(rest, 0.35, t);
       armL = armR = -2.6 * t;
       legL = 0.6 * t;
       legR = -0.4 * t;
@@ -124,7 +128,7 @@ export class CharacterAnimator {
       armL = -s * 0.8;
       armR = s * 0.8;
       torsoX = 0.14;
-      hipsY = 0.9 + Math.abs(Math.cos(this.phase)) * 0.08;
+      hipsY = rest + Math.abs(Math.cos(this.phase)) * 0.08;
     }
 
     if (pose === 'stumble') {

@@ -45,7 +45,7 @@ export const ZONES: readonly ZoneDef[] = [
     },
     scenery: [
       { model: 'tower_crane', chance: 0.05, minX: 22, maxX: 40 },
-      { model: 'building_frame', chance: 0.1, minX: 16, maxX: 34 },
+      { model: 'building_frame', chance: 0.1, minX: 18, maxX: 34 },
       { model: 'floodlight_tower', chance: 0.12, minX: 6, maxX: 8 },
       { model: 'sign_post', chance: 0.1, minX: 5.5, maxX: 6.5 },
       { model: 'cone', chance: 0.35, minX: 4.3, maxX: 5 },
@@ -114,7 +114,7 @@ export const ZONES: readonly ZoneDef[] = [
     },
     scenery: [
       { model: 'tower_crane', chance: 0.06, minX: 18, maxX: 30 },
-      { model: 'building_frame', chance: 0.2, minX: 12, maxX: 26 },
+      { model: 'building_frame', chance: 0.2, minX: 17, maxX: 28 },
       { model: 'scaffold_wall', chance: 0.12, minX: 7, maxX: 8 },
       { model: 'site_cabin', chance: 0.06, minX: 7, maxX: 10 },
       { model: 'brick_pallet', chance: 0.12, minX: 5, maxX: 6.5 },
