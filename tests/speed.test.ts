@@ -7,7 +7,8 @@ describe('speed curve', () => {
   it('starts at the start speed and approaches max', () => {
     expect(speedAt(0)).toBeCloseTo(16);
     expect(speedAt(120)).toBeGreaterThan(30);
-    expect(speedAt(10_000)).toBeLessThanOrEqual(32);
+    expect(speedAt(10_000)).toBeLessThanOrEqual(36);
+    expect(speedAt(180)).toBeGreaterThan(35); // keeps getting faster well past the first minute
   });
   it('is monotonic', () => {
     expect(speedAt(60)).toBeGreaterThan(speedAt(30));
