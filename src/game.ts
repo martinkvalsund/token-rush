@@ -14,6 +14,10 @@ import { ModelLibrary } from './render/models/library';
 import { Chaser } from './render/chaser';
 import { DebugOverlay } from './ui/debugOverlay';
 import { UI, type UiAction } from './ui/ui';
+import { POWERUP_NAMES } from './ui/icons';
+import { TIMED, type TimedPowerup } from './sim/powerups';
+import { POWERUP_TYPES, type PowerupType } from './sim/entities';
+import { ZONES } from './data/zones';
 
 const GAME_OVER_LINES = [
   'Merge conflict unresolved.',
@@ -50,6 +54,15 @@ export class Game {
   private runCount = 0;
   private countdownLeft = 0;
   private settingsReturn: GameState = 'Menu';
+  private readonly shield: THREE.Mesh;
+  private readonly puLeft: Record<TimedPowerup, number> = {
+    magnet: 0,
+    jetpack: 0,
+    shield: 0,
+    double: 0,
+    boots: 0,
+  };
+  private readonly puBlink: Partial<Record<TimedPowerup, boolean>> = {};
 
   constructor(canvas: HTMLCanvasElement, params: URLSearchParams) {
     this.params = params;
@@ -73,6 +86,22 @@ export class Game {
       this.chaser.group,
     );
 
+    this.shield = new THREE.Mesh(
+      new THREE.SphereGeometry(1.25, 24, 16),
+      new THREE.MeshStandardMaterial({
+        color: 0xffe0b2,
+        emissive: 0xffb74d,
+        emissiveIntensity: 0.6,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+      }),
+    );
+    this.shield.position.y = 1;
+    this.shield.visible = false;
+    this.character.root.add(this.shield);
+    if (params.get('debug') === '1') this.debugKeys();
+
     this.ui.onAction((a) => this.onUi(a));
     this.ui.setSave(this.storage.data);
     this.input.onCommand((cmd) => this.onCommand(cmd));
@@ -94,6 +123,28 @@ export class Game {
   start(): void {
     this.machine.go('Menu');
     this.loop.start();
+  }
+
+  /** Debug hotkeys (?debug=1): G god mode, 1-6 power-ups, T slow motion, N next zone, K faster. */
+  private debugKeys(): void {
+    window.addEventListener('keydown', (e) => {
+      const sim = this.sim;
+      if (e.code === 'KeyG') {
+        sim.god = !sim.god;
+        this.ui.toast(`God mode ${sim.god ? 'on' : 'off'}`);
+      } else if (e.code === 'KeyT') {
+        this.loop.timeScale = this.loop.timeScale === 1 ? 0.3 : 1;
+      } else if (e.code === 'KeyN') {
+        const len = TUNING.world.zoneLength;
+        sim.distance = (Math.floor(sim.distance / len) + 1) * len - 20;
+        sim.generator.cursor = sim.distance + 20;
+      } else if (e.code === 'KeyK') {
+        sim.elapsed += 30;
+      } else if (/^Digit[1-6]$/.test(e.code)) {
+        const t = POWERUP_TYPES[Number(e.code.slice(5)) - 1];
+        if (t) sim.activate(t);
+      }
+    });
   }
 
   private autoPause(): void {
@@ -233,6 +284,18 @@ export class Game {
         this.stumbleAge = 0;
       } else if (e.type === 'crash' || e.type === 'caught') {
         this.rig.shake(TUNING.camera.shakeCrash);
+      } else if (e.type === 'powerup') {
+        const t = e.label as PowerupType;
+        if (t === 'mystery') this.ui.toast('Mystery box…', 1.2);
+        else this.ui.toast(POWERUP_NAMES[t]);
+      } else if (e.type === 'mystery') {
+        if (e.label === 'tokens') this.ui.toast('Token shower!');
+        else if (e.label === 'score') this.ui.toast(`+${TUNING.powerups.mysteryScore} score`);
+      } else if (e.type === 'shieldBreak') {
+        this.rig.shake(TUNING.camera.shakeStumble);
+        this.ui.toast('Coffee saved you!');
+      } else if (e.type === 'zone') {
+        this.ui.toast(ZONES[e.value]?.name ?? '', 2);
       }
     }
     ev.clear();
@@ -249,6 +312,7 @@ export class Game {
     let pose: Pose = 'run';
     let poseTime = 0;
     if (state === 'Menu' || state === 'Countdown') pose = 'idle';
+    else if (p.flying) pose = 'jetpack';
     else if (state === 'Crashing' || state === 'GameOver') {
       pose = 'crash';
       poseTime = this.sim.deadTime;
@@ -257,7 +321,19 @@ export class Game {
       poseTime = this.stumbleAge;
     }
     const animDt = state === 'Paused' ? 0 : frameDt;
-    this.animator.update(p, this.sim.speed, animDt, pose, poseTime, this.sim.iframes > 0);
+    const pu = this.sim.powerups;
+    const jetEnding = pu.active('jetpack') && pu.left.jetpack < TUNING.powerups.jetpackBlink;
+    this.animator.update(
+      p,
+      this.sim.speed,
+      animDt,
+      pose,
+      poseTime,
+      this.sim.iframes > 0 || jetEnding,
+    );
+    this.shield.visible = pu.active('shield');
+    if (this.shield.visible)
+      this.shield.scale.setScalar(1 + Math.sin(performance.now() / 180) * 0.03);
 
     const renderDistance = this.prevDistance + (this.sim.distance - this.prevDistance) * alpha;
     this.road.scroll(renderDistance - this.lastDistance);
@@ -285,6 +361,9 @@ export class Game {
         lives: s.lives,
         multiplier: s.multiplier,
       });
+      for (const t of TIMED) this.puLeft[t] = s.powerups.fraction(t);
+      this.puBlink.jetpack = jetEnding;
+      this.ui.updatePowerups(this.puLeft, this.puBlink);
     }
     this.debug.update(frameDt, {
       speed: this.sim.speed,

@@ -15,6 +15,8 @@ import { Pool } from './pool';
 import { newObstacle, newPickup, newScenery, newToken, type Obstacle } from './entities';
 import { tierAt, zoneAt } from './difficulty';
 import { classify, groundAt } from './collision';
+import { Powerups, TIMED, rollMystery, type TimedPowerup } from './powerups';
+import { POWERUP_TYPES, type PowerupType } from './entities';
 
 export type DeathCause = 'none' | 'crash' | 'caught';
 
@@ -50,6 +52,7 @@ export class Sim {
   /** Debug: ignore all hits. */
   god = false;
 
+  readonly powerups = new Powerups();
   score = 0;
   tokens = 0;
   /** Tokens picked up in a row without a long gap (raises the pickup pitch). */
@@ -82,6 +85,7 @@ export class Sim {
     this.alive = true;
     this.cause = 'none';
     this.deadTime = 0;
+    this.powerups.reset();
     this.score = 0;
     this.tokens = 0;
     this.streak = 0;
@@ -103,11 +107,11 @@ export class Sim {
 
   /** Score multiplier (power-ups raise it). */
   get multiplier(): number {
-    return 1;
+    return this.powerups.active('double') ? 2 : 1;
   }
 
   get invulnerable(): boolean {
-    return this.iframes > 0 || this.god;
+    return this.iframes > 0 || this.god || this.powerups.active('jetpack');
   }
 
   step(dt: number): void {
@@ -135,11 +139,107 @@ export class Sim {
     if (zone !== this.zone) this.events.push('zone', zone);
     this.zone = zone;
 
+    this.tickPowerups(dt);
     this.generator.update(this.distance);
     this.updateEntities();
+    this.ctx.superJump = this.powerups.active('boots');
+    this.player.flying = this.powerups.active('jetpack');
     stepPlayer(this.player, dt, this.ctx, this.events);
     this.collide();
-    if (this.alive) this.collectTokens(dt);
+    if (!this.alive) return;
+    this.magnet(dt);
+    this.collectTokens(dt);
+    this.collectPickups();
+  }
+
+  /** Activate a power-up (pickups, mystery boxes and debug hotkeys). */
+  activate(type: PowerupType): void {
+    if (type === 'mystery') {
+      this.powerups.mysteryTimer = TUNING.powerups.mysteryDelay;
+      this.events.push('powerup', POWERUP_TYPES.indexOf(type), type);
+      return;
+    }
+    this.powerups.activate(type);
+    if (type === 'jetpack') {
+      this.player.flying = true;
+      this.player.sliding = false;
+      this.player.rollPending = false;
+      this.player.fastFall = false;
+      this.generator.skyTrailUntil = this.generator.cursor + this.speed * TUNING.powerups.jetpack;
+    }
+    this.events.push('powerup', POWERUP_TYPES.indexOf(type), type);
+  }
+
+  private tickPowerups(dt: number): void {
+    this.powerups.tick(dt, (t: TimedPowerup) => {
+      if (t === 'jetpack') {
+        this.player.flying = false;
+        this.player.softFall = true;
+        this.player.vy = 0;
+        this.player.grounded = false;
+        this.iframes = Math.max(this.iframes, TUNING.powerups.jetpackLandIFrames);
+      }
+      this.events.push('powerupEnd', TIMED.indexOf(t), t);
+    });
+    const pu = this.powerups;
+    if (pu.mysteryTimer > 0) {
+      pu.mysteryTimer -= dt;
+      if (pu.mysteryTimer <= 0) {
+        pu.mysteryTimer = 0;
+        this.resolveMystery();
+      }
+    }
+  }
+
+  private resolveMystery(): void {
+    const outcome = rollMystery(this.rng.next());
+    if (outcome === 'powerup') {
+      const t = this.rng.pick(TIMED);
+      this.events.push('mystery', 0, t);
+      this.activate(t);
+    } else if (outcome === 'tokens') {
+      const n = TUNING.powerups.mysteryTokens;
+      for (let i = 0; i < n; i++) {
+        const lane = i % 3;
+        const row = Math.floor(i / 3);
+        const at = this.distance + 8 + row * 2.2;
+        this.generator.addToken(
+          at,
+          TUNING.world.laneX[lane as 0 | 1 | 2],
+          1 + Math.sin((row / 9) * Math.PI) * 1.2,
+        );
+      }
+      this.events.push('mystery', 1, 'tokens');
+    } else {
+      this.score += TUNING.powerups.mysteryScore;
+      this.events.push('mystery', 2, 'score');
+    }
+  }
+
+  private magnet(dt: number): void {
+    if (!this.powerups.active('magnet')) return;
+    const p = this.player;
+    const range = TUNING.tokens.magnetRange;
+    const k = Math.min(1, dt * 12);
+    for (const t of this.world.tokens.items) {
+      if (!t.active) continue;
+      if (!t.magnet && t.z > -range && t.z < 1) t.magnet = true;
+      if (!t.magnet) continue;
+      t.at += (this.distance - t.at) * k;
+      t.x += (p.x - t.x) * k;
+      t.y += (p.y + 0.9 - t.y) * k;
+      t.z = this.distance - t.at;
+    }
+  }
+
+  private collectPickups(): void {
+    const p = this.player;
+    for (const u of this.world.pickups.items) {
+      if (!u.active || Math.abs(u.z) > 1.1) continue;
+      if (Math.abs(u.x - p.x) > 1.1 || Math.abs(u.y - (p.y + 0.9)) > 1.6) continue;
+      u.active = false;
+      this.activate(u.type);
+    }
   }
 
   private collectTokens(dt: number): void {
@@ -178,9 +278,17 @@ export class Sim {
     }
   }
 
-  /** Returns true if the hit was absorbed (i-frames). Shield handling is added with power-ups. */
+  /** Returns true if the hit was absorbed by i-frames, the jetpack or the coffee shield. */
   protected absorb(): boolean {
-    return this.invulnerable;
+    if (this.invulnerable) return true;
+    if (this.powerups.active('shield')) {
+      this.powerups.left.shield = 0;
+      this.iframes = TUNING.lives.shieldIFrames;
+      this.events.push('shieldBreak');
+      this.events.push('powerupEnd', TIMED.indexOf('shield'), 'shield');
+      return true;
+    }
+    return false;
   }
 
   private stumble(o: Obstacle): void {

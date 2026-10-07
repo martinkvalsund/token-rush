@@ -50,6 +50,8 @@ export class Generator {
   /** Recently emitted rows (for the bot and debug overlay). */
   readonly history: EmittedRow[] = [];
   currentPatternId = '';
+  /** Power-up types placed this run (for tests and debug). */
+  readonly spawnedPowerups: PowerupType[] = [];
   /** Distance at which the jetpack sky trail ends; tokens are laid at height until then. */
   skyTrailUntil = 0;
 
@@ -72,6 +74,7 @@ export class Generator {
     this.nextPowerupAt = this.rng.range(a, b);
     this.lastPowerup = null;
     this.history.length = 0;
+    this.spawnedPowerups.length = 0;
     this.skyTrailUntil = 0;
   }
 
@@ -194,7 +197,9 @@ export class Generator {
           break;
         case 'P':
           if (at >= this.nextPowerupAt) {
-            this.addPickup(this.pickPowerup(), at, x);
+            const type = this.pickPowerup();
+            this.spawnedPowerups.push(type);
+            this.addPickup(type, at, x);
             const [a, b] = TUNING.powerups.every;
             this.nextPowerupAt = at + this.rng.range(a, b);
           } else {
