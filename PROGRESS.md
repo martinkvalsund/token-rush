@@ -8,7 +8,7 @@
 - [x] Phase 5 — Tokens, scoring, HUD, persistence
 - [x] Phase 6 — Power-ups
 - [x] Phase 7 — Blender art pass and zones (all five zones incl. bridge)
-- [ ] Phase 8 — Advanced mechanics
+- [x] Phase 8 — Advanced mechanics
 - [ ] Phase 9 — Audio
 - [x] Phase 10 — UI, juice, post-processing, settings
 - [x] Phase 11 — Bot, balancing, performance

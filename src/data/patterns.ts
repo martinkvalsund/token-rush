@@ -145,3 +145,31 @@ export const PATTERN_DEFS: readonly PatternDef[] = [
   { id: 'bridge-barriers', zones: [4], minTier: 1, maxTier: 8, weight: 2, tags: ['jump', 'dodge'], mirror: true,
     rows: ['...', 'bbX', '..X', '...', '...', '...', '...', '...', '...'] },
 ];
+
+/** Moving hazards and ramps/platforms (Phase 8). Moving cells mark the lane the hazard occupies on arrival. */
+export const ADVANCED_PATTERN_DEFS: readonly PatternDef[] = [
+  { id: 'move-oncoming-center', zones: ALL, minTier: 1, maxTier: 8, weight: 2, tags: ['moving'],
+    rows: ['...', '...', '.m.', '...', '...', '...', '...', '...'] },
+  { id: 'move-oncoming-side', zones: ALL, minTier: 1, maxTier: 8, weight: 2, tags: ['moving', 'tokens'], mirror: true,
+    rows: ['...', '.T.', 'mT.', '.T.', '...', '...', '...'] },
+  { id: 'move-pair', zones: ALL, minTier: 3, maxTier: 8, weight: 2, tags: ['moving'], mirror: true,
+    rows: ['...', 'm..', '...', '...', '...', '...', '...', '...', '..m', '...', '...', '...', '...'] },
+  { id: 'move-with-block', zones: ALL, minTier: 3, maxTier: 8, weight: 2, tags: ['moving', 'dodge'], mirror: true,
+    rows: ['...', 'Xm.', 'X..', '...', '...', '...', '...', '...', '...'] },
+  { id: 'move-gate', zones: ALL, minTier: 2, maxTier: 8, weight: 2, tags: ['moving', 'tokens'], mirror: true,
+    rows: ['...', 'T..', 'T.m', 'T..', '...', '...', '...'] },
+  { id: 'move-then-jump', zones: ALL, minTier: 4, maxTier: 8, weight: 2, tags: ['moving', 'jump'],
+    rows: ['...', '.m.', '...', '...', '...', '...', '...', '...', 'bjb', '...', '...', '...'] },
+  { id: 'ramp-roof-side', zones: [0, 2, 3, 4], minTier: 0, maxTier: 8, weight: 3, tags: ['ramp', 'tokens'], mirror: true,
+    rows: ['...', 'r..', 'R..', 'R..', 'R..', '...', '...', '...', '...'] },
+  { id: 'ramp-roof-center', zones: [0, 2, 3, 4], minTier: 0, maxTier: 8, weight: 2, tags: ['ramp', 'tokens'],
+    rows: ['...', '.r.', '.R.', '.R.', '.R.', '.R.', '...', '...', '...', '...'] },
+  { id: 'ramp-over-blocks', zones: [2], minTier: 2, maxTier: 8, weight: 2, tags: ['ramp', 'dodge'], mirror: true,
+    rows: ['...', 'r..', 'RX.', 'RX.', 'R..', '...', '...', '...', '...', '...'] },
+  { id: 'ramp-escape', zones: [0, 2, 4], minTier: 2, maxTier: 8, weight: 2, tags: ['ramp', 'dodge'], mirror: true,
+    rows: ['...', '.rX', '.RX', '.RX', '.R.', '...', '...', '...', '...', '...'] },
+  { id: 'ramp-twin', zones: [2, 3], minTier: 1, maxTier: 8, weight: 2, tags: ['ramp'],
+    rows: ['...', 'r.r', 'R.R', 'R.R', 'R.R', '...', '...', '...', '...'] },
+  { id: 'ramp-then-jump', zones: [0, 2, 3, 4], minTier: 3, maxTier: 8, weight: 1, tags: ['ramp', 'jump'],
+    rows: ['...', '.r.', '.R.', '.R.', '...', '...', '...', '...', '...', 'bjb', '...', '...', '...'] },
+];

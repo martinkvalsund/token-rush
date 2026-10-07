@@ -1,4 +1,4 @@
-import { TUNING } from '../data/tuning';
+import { TUNING, laneX } from '../data/tuning';
 import { Rng } from '../core/rng';
 import { EventQueue } from './events';
 import {
@@ -323,9 +323,34 @@ export class Sim {
   private updateEntities(): void {
     const d = this.distance;
     const behind = TUNING.world.despawnBehind;
+    const M = TUNING.moving;
+    const v = Math.max(1, this.speed);
     for (const o of this.world.obstacles.items) {
       if (!o.active) continue;
-      o.z = d - o.at;
+      const ahead = o.at - d;
+      switch (o.move) {
+        case 'oncoming':
+        case 'roll':
+          // Drives towards the player but still arrives exactly at its authored row.
+          o.z = -ahead * (1 + (o.move === 'oncoming' ? M.oncomingSpeed : M.rollSpeed) / v);
+          break;
+        case 'swing':
+        case 'sweep': {
+          // Pendulum phased so it is over its authored lane at the moment of arrival.
+          o.z = -ahead;
+          const tta = ahead / v;
+          const lane = laneX(o.lane);
+          const phase = Math.asin(Math.max(-1, Math.min(1, lane / M.swingAmplitude)));
+          o.x = M.swingAmplitude * Math.sin(((2 * Math.PI) / M.swingPeriod) * tta + phase);
+          break;
+        }
+        default:
+          o.z = -ahead;
+      }
+      if (o.move !== 'none' && !o.warned && ahead / v < M.warnAhead) {
+        o.warned = true;
+        this.events.push('warning', o.lane, o.move);
+      }
       if (o.z - o.d / 2 > behind) o.active = false;
     }
     for (const t of this.world.tokens.items) {

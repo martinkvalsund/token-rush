@@ -234,6 +234,7 @@ export class Game {
     this.prevGap = this.sim.gap;
     this.stumbleAge = 99;
     this.view?.resetScroll();
+    this.ui.clearWarnings();
   }
 
   private update(dt: number): void {
@@ -275,6 +276,8 @@ export class Game {
       } else if (e.type === 'shieldBreak') {
         view.rig.shake(TUNING.camera.shakeStumble);
         this.ui.toast('Coffee saved you!');
+      } else if (e.type === 'warning') {
+        this.ui.warn(e.value);
       } else if (e.type === 'zone') {
         this.ui.toast(ZONES[e.value]?.name ?? '', 2);
       }

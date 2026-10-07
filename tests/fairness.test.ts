@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PATTERN_DEFS } from '../src/data/patterns';
+import { ADVANCED_PATTERN_DEFS, PATTERN_DEFS } from '../src/data/patterns';
 import { buildPatterns } from '../src/sim/pattern';
 import {
   propagate,
@@ -10,7 +10,7 @@ import {
 } from '../src/sim/fairness';
 import { tierSpeedRange } from '../src/sim/difficulty';
 
-const patterns = buildPatterns(PATTERN_DEFS);
+const patterns = buildPatterns([...PATTERN_DEFS, ...ADVANCED_PATTERN_DEFS]);
 
 describe('patterns', () => {
   it('has at least 60 patterns', () => {
