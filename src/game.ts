@@ -8,13 +8,19 @@ import { CameraRig } from './render/cameraRig';
 import { Road } from './render/world';
 import { CharacterAnimator, buildGreyboxRig } from './render/character';
 import { DebugOverlay } from './ui/debugOverlay';
+import { seedFromUrl } from './core/rng';
+import { EntityRenderer } from './render/entities';
+import { ModelLibrary } from './render/models/library';
 
 export class Game {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly rig = new CameraRig();
   private readonly road = new Road();
-  private readonly sim = new Sim();
+  private readonly sim = new Sim(seedFromUrl(window.location.search));
+  private readonly library = new ModelLibrary((m) => m);
+  private readonly entities = new EntityRenderer(this.library);
+  private prevDistance = 0;
   private readonly machine = new StateMachine();
   private readonly input = new Input();
   private readonly loop: FixedLoop;
@@ -37,7 +43,7 @@ export class Game {
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x556677, 1.6));
     const sun = new THREE.DirectionalLight(0xfff0d0, 2.2);
     sun.position.set(-8, 14, 6);
-    this.scene.add(sun, this.road.group, this.character.root);
+    this.scene.add(sun, this.road.group, this.character.root, this.entities.group);
 
     this.input.onCommand((cmd) => this.onCommand(cmd));
     this.machine.onChange((next) => {
@@ -75,6 +81,7 @@ export class Game {
   private update(dt: number): void {
     this.prevX = this.sim.player.x;
     this.prevY = this.sim.player.y;
+    this.prevDistance = this.sim.distance;
     this.sim.step(dt);
     this.sim.events.clear();
   }
@@ -92,8 +99,10 @@ export class Game {
       0,
       false,
     );
-    this.road.scroll(this.sim.distance - this.lastDistance);
-    this.lastDistance = this.sim.distance;
+    const renderDistance = this.prevDistance + (this.sim.distance - this.prevDistance) * alpha;
+    this.road.scroll(renderDistance - this.lastDistance);
+    this.lastDistance = renderDistance;
+    this.entities.update(this.sim, renderDistance, frameDt);
     const { start, max } = TUNING.speed;
     this.rig.update((this.sim.speed - start) / (max - start), x, frameDt);
     this.renderer.render(this.scene, this.rig.camera);
@@ -101,6 +110,11 @@ export class Game {
       speed: this.sim.speed,
       distance: this.sim.distance,
       state: this.machine.state,
+      tier: this.sim.tier,
+      zone: this.sim.zone,
+      pattern: this.sim.generator.currentPatternId,
+      obstacles: this.sim.world.obstacles.countActive(),
+      tokens: this.sim.world.tokens.countActive(),
     });
   }
 

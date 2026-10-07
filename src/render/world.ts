@@ -23,7 +23,7 @@ export class Road {
     this.texture.colorSpace = THREE.SRGBColorSpace;
     this.texture.repeat.set(1, this.length / 8);
 
-    const roadWidth = (TUNING.world.laneX[2] - TUNING.world.laneX[0]) * 1.5;
+    const roadWidth = TUNING.world.laneX[2] - TUNING.world.laneX[0] + 4.4;
     const road = new THREE.Mesh(
       new THREE.PlaneGeometry(roadWidth, this.length),
       new THREE.MeshLambertMaterial({ map: this.texture }),
