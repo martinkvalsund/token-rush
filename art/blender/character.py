@@ -5,6 +5,14 @@ the game's procedural animation rotates them directly. Pivots match render/chara
 """
 
 
+def hard_hat(p):
+    """The site hard hat, in head-local coordinates (shared with the shop headgear)."""
+    p.uvsphere(0.19, (0, 0, 0.28), "yellow", scale=(1.0, 1.08, 0.72), segs=12, rings=6)
+    p.cyl(0.215, 0.025, (0, 0.02, 0.29), "yellow_dark", segs=14)
+    p.box((0.05, 0.3, 0.06), (0, 0, 0.42), "yellow_dark")
+    p.box((0.12, 0.02, 0.05), (0, 0.205, 0.33), "white")
+
+
 def build_developer():
     root = bpy.data.objects.new("developer", None)
     collection().objects.link(root)
@@ -46,12 +54,11 @@ def build_developer():
     head.box((0.07, 0.02, 0.015), (0, 0.16, 0.12), "brown_dark")
     for x in (-0.15, 0.15):
         head.sphere(0.035, (x, 0.0, 0.2), "skin", subdiv=1)
-    # hard hat
-    head.uvsphere(0.19, (0, 0, 0.28), "yellow", scale=(1.0, 1.08, 0.72), segs=12, rings=6)
-    head.cyl(0.215, 0.025, (0, 0.02, 0.29), "yellow_dark", segs=14)
-    head.box((0.05, 0.3, 0.06), (0, 0, 0.42), "yellow_dark")
-    head.box((0.12, 0.02, 0.05), (0, 0.205, 0.33), "white")
-    head.finish(parent=torso_o, loc=(0, 0, 0.62))
+    head_o = head.finish(parent=torso_o, loc=(0, 0, 0.62))
+    # The hard hat is its own object so shop headgear can replace it in the game.
+    hat = Part("hardhat")
+    hard_hat(hat)
+    hat.finish(parent=head_o)
 
     for name, side in (("armL", -1), ("armR", 1)):
         arm = Part(name)

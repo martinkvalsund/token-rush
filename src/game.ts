@@ -22,6 +22,10 @@ import { buildSettings } from './ui/settings';
 import { buildHelp } from './ui/help';
 import type { Pose } from './render/character';
 import { DebugOverlay } from './ui/debugOverlay';
+import { ShopScreen } from './ui/shop';
+import { SHOP_ITEMS } from './data/shop';
+import { loadoutItems, sanitizeLoadout } from './core/shop';
+import { renderThumbnails } from './render/thumbnails';
 import { UI, type UiAction } from './ui/ui';
 import { POWERUP_NAMES } from './ui/icons';
 import { AudioEngine } from './audio/engine';
@@ -77,6 +81,27 @@ export class Game {
     boots: 0,
   };
   private readonly puBlink: Partial<Record<TimedPowerup, boolean>> = {};
+  private readonly shop = new ShopScreen({
+    save: () => this.storage.data,
+    preview: (loadout) => this.view?.cosmetics.apply(loadoutItems(loadout)),
+    commit: () => {
+      this.storage.save();
+      this.ui.setSave(this.storage.data);
+    },
+    thumbnails: () => renderThumbnails(this.library, SHOP_ITEMS),
+    onBuy: (item) => {
+      this.sfx.fanfare();
+      this.ui.toast(`${item.name} unlocked!`, 1.8);
+      if (!this.storage.data.settings.reduceMotion) this.ui.confetti();
+    },
+    onDaily: (amount) => {
+      this.sfx.mysteryReveal();
+      this.ui.toast(`+${amount} tokens!`, 1.6);
+    },
+    onDeny: () => this.sfx.stumble(),
+    click: () => this.sfx.click(),
+    back: () => this.onUi('back'),
+  });
 
   constructor(canvas: HTMLCanvasElement, params: URLSearchParams) {
     this.params = params;
@@ -102,8 +127,10 @@ export class Game {
       this.sfx.click();
       this.onUi(a);
     });
+    sanitizeLoadout(this.storage.data);
     this.ui.setSave(this.storage.data);
     this.applyAudioSettings();
+    this.ui.addScreen('shop', this.shop.el);
     this.ui.addScreen(
       'settings',
       buildSettings(
@@ -112,6 +139,7 @@ export class Game {
         () => {
           this.storage.reset();
           this.ui.setSave(this.storage.data);
+          this.dress();
         },
         () => this.onUi('back'),
       ),
@@ -158,6 +186,7 @@ export class Game {
     this.ui.loading(0);
     await this.library.loadAll(MODEL_NAMES, (f) => this.ui.loading(f));
     this.view = new View(this.library);
+    this.dress();
     this.post = new Post(this.renderer, this.view.scene, this.view.rig.camera);
     // Soft studio reflections for every material (tinted per zone by environmentIntensity).
     const pmrem = new THREE.PMREMGenerator(this.renderer);
@@ -168,6 +197,11 @@ export class Game {
     this.machine.go('Menu');
     this.loop.start();
     this.ui.loading(null);
+  }
+
+  /** Put the equipped shop cosmetics on the character. */
+  private dress(): void {
+    this.view?.cosmetics.apply(loadoutItems(this.storage.data.loadout));
   }
 
   /** Debug hotkeys (?debug=1): G god mode, 1-6 power-ups, T slow motion, N next zone, K faster. */
@@ -304,6 +338,7 @@ export class Game {
           tokens: s.tokens,
           newBest,
           highScore: this.storage.data.highScore,
+          wallet: this.storage.data.wallet,
           message: GAME_OVER_LINES[s.rng.int(0, GAME_OVER_LINES.length - 1)] ?? '',
         });
         break;
@@ -339,7 +374,18 @@ export class Game {
         this.settingsReturn = state;
         this.ui.show(a);
         break;
+      case 'shop':
+        if (state !== 'Menu') this.machine.go('Menu');
+        this.settingsReturn = 'Menu';
+        if (this.view) this.view.rig.showcase = true;
+        this.ui.show('shop');
+        this.shop.open();
+        break;
       case 'back':
+        if (this.ui.screen === 'shop') {
+          if (this.view) this.view.rig.showcase = false;
+          this.dress();
+        }
         this.ui.show(this.settingsReturn === 'Paused' ? 'pause' : 'menu');
         break;
     }
@@ -361,7 +407,7 @@ export class Game {
       if (state === 'Playing' || state === 'Countdown') this.machine.go('Paused');
       else if (state === 'Paused') this.machine.go('Playing');
       else if (state === 'GameOver') this.machine.go('Menu');
-      else if (this.ui.screen !== 'menu' && state === 'Menu') this.ui.show('menu');
+      else if (this.ui.screen !== 'menu' && state === 'Menu') this.onUi('back');
       return;
     }
     if (state === 'Menu' && cmd === 'confirm' && this.ui.screen === 'menu') {

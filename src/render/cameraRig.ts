@@ -20,6 +20,9 @@ export class CameraRig {
   /** 0..1 multiplier from the reduce-motion setting. */
   shakeScale = 1;
   menu = true;
+  /** Shop: a closer orbit so the outfit is easy to see. */
+  showcase = false;
+  private showcaseBlend = 0;
   /** Highest the camera may go (under a tunnel roof); Infinity outdoors. */
   maxY = Infinity;
 
@@ -50,9 +53,12 @@ export class CameraRig {
     this.look.set(this.base.x * 0.5, lookAt[1] + (this.base.y - position[1]), lookAt[2]);
 
     // Menu: slow orbit in front of the player.
+    this.showcaseBlend += ((this.showcase ? 1 : 0) - this.showcaseBlend) * Math.min(1, dt * 3);
+    const c = this.showcaseBlend;
     const a = Math.sin(this.time * 0.25) * 0.7 + 0.35;
-    this.orbitPos.set(playerX + Math.sin(a) * 5.2, 2.0, -Math.cos(a) * 5.2);
-    this.orbitLook.set(playerX, 1.1, 0);
+    const radius = 5.2 - 1.8 * c;
+    this.orbitPos.set(playerX + Math.sin(a) * radius, 2.0 - 0.35 * c, -Math.cos(a) * radius);
+    this.orbitLook.set(playerX, 1.1 + 0.1 * c, 0);
 
     const b = this.menuBlend * this.menuBlend * (3 - 2 * this.menuBlend);
     this.pos.lerpVectors(this.base, this.orbitPos, b);
@@ -60,7 +66,7 @@ export class CameraRig {
     this.camera.position.copy(this.pos);
     this.camera.lookAt(this.target);
     // On the menu, slide the camera right so the runner sits left of the title panel.
-    if (b > 0.001) this.camera.translateX(1.7 * b);
+    if (b > 0.001) this.camera.translateX((1.7 - 0.55 * c) * b);
     if (this.trauma > 0) {
       const s = this.trauma * this.trauma;
       this.camera.position.x += Math.sin(this.time * 47) * s * 0.4;

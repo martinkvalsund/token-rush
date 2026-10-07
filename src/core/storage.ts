@@ -13,12 +13,23 @@ export interface Settings {
   showFps: boolean;
 }
 
+/** Equipped cosmetic per shop category (item ids from data/shop.ts). */
+export type Loadout = Record<'outfit' | 'hat' | 'pet' | 'trail' | 'skin' | 'hair', string>;
+
 export interface SaveData {
   version: 1;
   highScore: number;
   bestDistance: number;
+  /** Lifetime tokens collected (a stat; never goes down). */
   totalTokens: number;
   runs: number;
+  /** Spendable tokens for the shop. */
+  wallet: number;
+  /** Bought shop item ids (free items are always owned). */
+  owned: string[];
+  loadout: Loadout;
+  /** Local date (YYYY-MM-DD) the daily crate was last opened. */
+  lastDaily: string;
   settings: Settings;
 }
 
@@ -36,6 +47,15 @@ export const DEFAULT_SETTINGS: Settings = {
   showFps: false,
 };
 
+export const DEFAULT_LOADOUT: Loadout = {
+  outfit: 'outfit_classic',
+  hat: 'hat_hardhat',
+  pet: 'pet_none',
+  trail: 'trail_none',
+  skin: 'skin_3',
+  hair: 'hair_brown',
+};
+
 export function defaultSave(): SaveData {
   return {
     version: 1,
@@ -43,6 +63,10 @@ export function defaultSave(): SaveData {
     bestDistance: 0,
     totalTokens: 0,
     runs: 0,
+    wallet: 0,
+    owned: [],
+    loadout: { ...DEFAULT_LOADOUT },
+    lastDaily: '',
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -70,12 +94,27 @@ export function parseSave(raw: string | null): SaveData {
     unknown
   >;
   const def = DEFAULT_SETTINGS;
+  const totalTokens = num(d.totalTokens, 0);
+  const lo = (typeof d.loadout === 'object' && d.loadout !== null ? d.loadout : {}) as Record<
+    string,
+    unknown
+  >;
+  const loadout = { ...DEFAULT_LOADOUT };
+  for (const k of Object.keys(loadout) as (keyof Loadout)[])
+    if (typeof lo[k] === 'string') loadout[k] = lo[k];
   return {
     version: 1,
     highScore: num(d.highScore, 0),
     bestDistance: num(d.bestDistance, 0),
-    totalTokens: num(d.totalTokens, 0),
+    totalTokens,
     runs: num(d.runs, 0),
+    // Saves from before the shop: every token collected so far is spendable.
+    wallet: Math.floor(num(d.wallet, totalTokens)),
+    owned: Array.isArray(d.owned)
+      ? [...new Set(d.owned.filter((x): x is string => typeof x === 'string'))]
+      : [],
+    loadout,
+    lastDaily: typeof d.lastDaily === 'string' ? d.lastDaily : '',
     settings: {
       controls: pick(s.controls, ['keys', 'trackpad'], def.controls),
       swipeSensitivity: num(s.swipeSensitivity, def.swipeSensitivity, 0.25, 3),
@@ -134,6 +173,7 @@ export class Storage {
     this.data.highScore = Math.max(this.data.highScore, Math.floor(score));
     this.data.bestDistance = Math.max(this.data.bestDistance, Math.floor(distance));
     this.data.totalTokens += tokens;
+    this.data.wallet += tokens;
     this.data.runs += 1;
     this.save();
     return best;
