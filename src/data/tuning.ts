@@ -12,7 +12,7 @@ export const TUNING = {
     tierLength: 180,
     maxTier: 8,
   },
-  speed: { start: 16, max: 32, timeConstant: 30 },
+  speed: { start: 16, max: 36, timeConstant: 48 },
   player: {
     laneChangeTime: 0.12,
     gravity: 28,

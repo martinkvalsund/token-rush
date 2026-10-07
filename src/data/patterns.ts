@@ -32,7 +32,7 @@ export const PATTERN_DEFS: readonly PatternDef[] = [
     rows: ['...', 'T..', 'j..', '...', '...', 'T..', '...', '...'] },
   { id: 'jump-wall', zones: ALL, minTier: 0, maxTier: 8, weight: 3, tags: ['jump'],
     rows: ['...', '...', 'bjb', '...', '...', '...', '.T.', '.T.', '...'] },
-  { id: 'jump-wall-double', zones: ALL, minTier: 1, maxTier: 8, weight: 2, tags: ['jump'],
+  { id: 'jump-wall-double', zones: ALL, minTier: 1, maxTier: 7, weight: 2, tags: ['jump'],
     rows: ['...', 'bbb', '...', '...', '...', '...', '...', '...', 'bjb', '...', '...', '...'] },
   { id: 'jump-stairs', zones: ALL, minTier: 0, maxTier: 8, weight: 2, tags: ['jump'], mirror: true,
     rows: ['...', 'j..', '...', '...', '.j.', '...', '...', '..j', '...', '...'] },
@@ -46,14 +46,22 @@ export const PATTERN_DEFS: readonly PatternDef[] = [
     rows: ['...', '...', '.o.', '...', '.T.', '.T.', '...', '...'] },
   { id: 'slide-wall', zones: ALL, minTier: 0, maxTier: 8, weight: 3, tags: ['slide'],
     rows: ['...', '...', 'ooo', '...', '...', '...', '.T.', '...', '...'] },
-  { id: 'slide-wall-double', zones: ALL, minTier: 1, maxTier: 8, weight: 2, tags: ['slide'],
+  { id: 'slide-wall-double', zones: ALL, minTier: 1, maxTier: 7, weight: 2, tags: ['slide'],
     rows: ['...', 'ooo', '...', '...', '...', '...', '...', '...', 'ooo', '...', '...', '...'] },
-  { id: 'slide-then-jump', zones: ALL, minTier: 2, maxTier: 8, weight: 2, tags: ['slide', 'jump'],
+  { id: 'slide-then-jump', zones: ALL, minTier: 2, maxTier: 7, weight: 2, tags: ['slide', 'jump'],
     rows: ['...', 'ooo', '...', '...', '...', '...', '...', '...', '...', 'bjb', '...', '...', '...'] },
   { id: 'jump-then-slide', zones: ALL, minTier: 2, maxTier: 8, weight: 2, tags: ['slide', 'jump'],
     rows: ['...', 'bjb', '...', '...', '...', '...', '...', '...', '...', 'ooo', '...', '...', '...'] },
   { id: 'slide-side', zones: ALL, minTier: 0, maxTier: 5, weight: 2, tags: ['slide'], mirror: true,
     rows: ['...', 'oo.', '...', '...', '...', '..T', '..T', '...'] },
+
+  // Top-tier versions of the double walls: at up to 40 m/s they need two more rows to land.
+  { id: 'jump-wall-double-fast', zones: ALL, minTier: 8, maxTier: 8, weight: 2, tags: ['jump'],
+    rows: ['...', 'bbb', '...', '...', '...', '...', '...', '...', '...', '...', 'bjb', '...', '...', '...'] },
+  { id: 'slide-wall-double-fast', zones: ALL, minTier: 8, maxTier: 8, weight: 2, tags: ['slide'],
+    rows: ['...', 'ooo', '...', '...', '...', '...', '...', '...', '...', '...', 'ooo', '...', '...', '...'] },
+  { id: 'slide-then-jump-fast', zones: ALL, minTier: 8, maxTier: 8, weight: 2, tags: ['slide', 'jump'],
+    rows: ['...', 'ooo', '...', '...', '...', '...', '...', '...', '...', '...', '...', 'bjb', '...', '...', '...'] },
 
   // ---- Dodge ------------------------------------------------------------------------------
   { id: 'dodge-side-block', zones: ALL, minTier: 0, maxTier: 8, weight: 2, tags: ['dodge', 'tokens'], mirror: true,
