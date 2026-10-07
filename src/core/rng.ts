@@ -6,6 +6,10 @@ export class Rng {
     this.state = seed >>> 0;
   }
 
+  reseed(seed: number): void {
+    this.state = seed >>> 0;
+  }
+
   next(): number {
     this.state = (this.state + 0x6d2b79f5) >>> 0;
     let t = this.state;

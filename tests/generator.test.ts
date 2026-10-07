@@ -4,6 +4,7 @@ import { Sim } from '../src/sim/sim';
 describe('generator', () => {
   it('fills the horizon and recycles entities over a 10 minute seeded run', () => {
     const sim = new Sim(1234);
+    sim.god = true;
     let maxObstacles = 0;
     for (let i = 0; i < 60 * 600; i++) {
       sim.step(1 / 60);
@@ -19,6 +20,7 @@ describe('generator', () => {
   it('is deterministic for a seed', () => {
     const run = (seed: number) => {
       const s = new Sim(seed);
+      s.god = true;
       for (let i = 0; i < 60 * 60; i++) s.step(1 / 60);
       return s.generator.history.map((h) => h.patternId + h.row.join('')).join('|');
     };

@@ -2,6 +2,7 @@ import { TUNING } from '../data/tuning';
 import { Rng } from '../core/rng';
 import { EventQueue } from './events';
 import {
+  changeLane,
   createPlayer,
   queueCommand,
   stepPlayer,
@@ -11,8 +12,13 @@ import {
 import { speedAt } from './speed';
 import { Generator, type World } from './generator';
 import { Pool } from './pool';
-import { newObstacle, newPickup, newScenery, newToken } from './entities';
+import { newObstacle, newPickup, newScenery, newToken, type Obstacle } from './entities';
 import { tierAt, zoneAt } from './difficulty';
+import { classify, groundAt } from './collision';
+
+export type DeathCause = 'none' | 'crash' | 'caught';
+
+const L = TUNING.lives;
 
 /** The whole game simulation. Pure: no three.js, no DOM. */
 export class Sim {
@@ -31,7 +37,23 @@ export class Sim {
   speed: number = TUNING.speed.start;
   tier = 0;
   zone = 0;
-  private readonly ctx = { superJump: false, groundAt: (_x: number) => 0 };
+
+  /** Distance between the Tech Debt boulder and the player. */
+  gap: number = L.gapFar;
+  iframes = 0;
+  slowTimer = 0;
+  stumbleTime = 99;
+  alive = true;
+  cause: DeathCause = 'none';
+  /** Seconds since death (drives the crash/caught sequence). */
+  deadTime = 0;
+  /** Debug: ignore all hits. */
+  god = false;
+
+  private readonly ctx = {
+    superJump: false,
+    groundAt: (x: number) => groundAt(this.world.obstacles.items, x, this.player.y),
+  };
 
   constructor(readonly seed: number) {
     this.rng = new Rng(seed);
@@ -39,13 +61,21 @@ export class Sim {
     this.reset();
   }
 
-  reset(): void {
+  reset(seed?: number): void {
+    if (seed !== undefined) this.rng.reseed(seed);
     this.player = createPlayer();
     this.elapsed = 0;
     this.distance = 0;
     this.speed = TUNING.speed.start;
     this.tier = 0;
     this.zone = 0;
+    this.gap = L.gapFar;
+    this.iframes = 0;
+    this.slowTimer = 0;
+    this.stumbleTime = 99;
+    this.alive = true;
+    this.cause = 'none';
+    this.deadTime = 0;
     this.events.clear();
     for (const pool of Object.values(this.world)) pool.clear();
     this.generator.reset();
@@ -53,13 +83,35 @@ export class Sim {
   }
 
   command(cmd: PlayerCommand): void {
-    queueCommand(this.player, cmd);
+    if (this.alive) queueCommand(this.player, cmd);
+  }
+
+  /** Lives shown as hard hats: 2 when clean, 1 while the boulder is closing in. */
+  get lives(): number {
+    return this.gap >= L.gapFar - 0.01 ? 2 : 1;
+  }
+
+  get invulnerable(): boolean {
+    return this.iframes > 0 || this.god;
   }
 
   step(dt: number): void {
+    if (!this.alive) {
+      this.deadTime += dt;
+      // The boulder rolls up to (and over) the player.
+      if (this.cause === 'caught') this.gap = Math.max(-1, this.gap - dt * 10);
+      else this.gap = Math.max(1.5, this.gap - dt * 8);
+      return;
+    }
     this.elapsed += dt;
-    this.speed = speedAt(this.elapsed);
+    this.stumbleTime += dt;
+    this.iframes = Math.max(0, this.iframes - dt);
+    this.slowTimer = Math.max(0, this.slowTimer - dt);
+    this.speed = speedAt(this.elapsed) * (this.slowTimer > 0 ? 1 - L.stumbleSlowdown : 1);
     this.distance += this.speed * dt;
+    if (this.stumbleTime > L.stumbleIFrames)
+      this.gap = Math.min(L.gapFar, this.gap + L.gapRecovery * dt);
+
     const tier = tierAt(this.distance);
     if (tier !== this.tier) this.events.push('tier', tier);
     this.tier = tier;
@@ -70,6 +122,58 @@ export class Sim {
     this.generator.update(this.distance);
     this.updateEntities();
     stepPlayer(this.player, dt, this.ctx, this.events);
+    this.collide();
+  }
+
+  private collide(): void {
+    for (const o of this.world.obstacles.items) {
+      if (!o.active || Math.abs(o.z) > o.d / 2 + 2) continue;
+      const hit = classify(this.player, o);
+      if (hit === 'none') continue;
+      o.hit = true;
+      if (hit === 'side') {
+        changeLane(this.player, this.player.prevLane);
+        this.stumble(o);
+      } else if (o.severity === 'crash') {
+        this.crash(o);
+      } else {
+        this.stumble(o);
+      }
+      if (!this.alive) return;
+    }
+  }
+
+  /** Returns true if the hit was absorbed (i-frames). Shield handling is added with power-ups. */
+  protected absorb(): boolean {
+    return this.invulnerable;
+  }
+
+  private stumble(o: Obstacle): void {
+    if (this.absorb()) return;
+    // Caught: a second stumble before the boulder has fallen back off-screen. (The spec's
+    // "gap <= GAP_NEAR" rule leaves no window, because the gap starts recovering at once.)
+    if (this.gap < L.gapFar - 0.01) {
+      this.die('caught', o);
+      return;
+    }
+    this.gap = Math.max(L.gapNear, this.gap - L.stumbleGapLoss);
+    this.slowTimer = L.stumbleSlowTime;
+    this.iframes = L.stumbleIFrames;
+    this.stumbleTime = 0;
+    this.events.push('stumble', o.kind);
+  }
+
+  private crash(o: Obstacle): void {
+    if (this.absorb()) return;
+    this.die('crash', o);
+  }
+
+  private die(cause: 'crash' | 'caught', o: Obstacle): void {
+    this.alive = false;
+    this.cause = cause;
+    this.deadTime = 0;
+    this.speed = 0;
+    this.events.push(cause, o.kind);
   }
 
   /** Treadmill: derive z from track position and recycle what is behind the camera. */

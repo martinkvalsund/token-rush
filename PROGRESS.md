@@ -4,7 +4,7 @@
 - [x] Phase 1 — Core engine
 - [x] Phase 2 — Player controller
 - [x] Phase 3 — World generation
-- [ ] Phase 4 — Obstacles, collisions, lives, chaser
+- [x] Phase 4 — Obstacles, collisions, lives, chaser
 - [ ] Phase 5 — Tokens, scoring, HUD, persistence
 - [ ] Phase 6 — Power-ups
 - [ ] Phase 7 — Blender art pass and zones
