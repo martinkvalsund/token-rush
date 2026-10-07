@@ -9,7 +9,7 @@
 - [x] Phase 6 — Power-ups
 - [x] Phase 7 — Blender art pass and zones (all five zones incl. bridge)
 - [x] Phase 8 — Advanced mechanics
-- [ ] Phase 9 — Audio
+- [x] Phase 9 — Audio
 - [x] Phase 10 — UI, juice, post-processing, settings
 - [x] Phase 11 — Bot, balancing, performance
 - [x] Phase 12 — Polish and release

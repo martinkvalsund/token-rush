@@ -17,6 +17,9 @@ import type { Pose } from './render/character';
 import { DebugOverlay } from './ui/debugOverlay';
 import { UI, type UiAction } from './ui/ui';
 import { POWERUP_NAMES } from './ui/icons';
+import { AudioEngine } from './audio/engine';
+import { Sfx } from './audio/sfx';
+import { Music } from './audio/music';
 
 const GAME_OVER_LINES = [
   'Merge conflict unresolved.',
@@ -38,6 +41,9 @@ export class Game {
   private readonly loop: FixedLoop;
   private readonly debug: DebugOverlay;
   private readonly ui = new UI();
+  private readonly audio = new AudioEngine();
+  private readonly sfx = new Sfx(this.audio);
+  private readonly music = new Music(this.audio);
   private prevX = 0;
   private prevY = 0;
   private prevDistance = 0;
@@ -71,8 +77,12 @@ export class Game {
     this.debug = new DebugOverlay(this.renderer, params.get('debug') === '1');
     if (params.get('debug') === '1') this.debugKeys();
 
-    this.ui.onAction((a) => this.onUi(a));
+    this.ui.onAction((a) => {
+      this.sfx.click();
+      this.onUi(a);
+    });
     this.ui.setSave(this.storage.data);
+    this.applyAudioSettings();
     this.input.onCommand((cmd) => this.onCommand(cmd));
     this.machine.onChange((next, prev) => this.onState(next, prev));
     this.loop = new FixedLoop(
@@ -127,6 +137,11 @@ export class Game {
     this.prevDistance = sim.distance;
   }
 
+  private applyAudioSettings(): void {
+    const s = this.storage.data.settings;
+    this.audio.setVolumes(s.masterVolume, s.musicVolume, s.sfxVolume, s.muted);
+  }
+
   private autoPause(): void {
     const s = this.machine.state;
     if (s === 'Playing' || s === 'Countdown') this.machine.go('Paused');
@@ -134,6 +149,8 @@ export class Game {
 
   private onState(next: GameState, prev: GameState): void {
     this.loop.paused = next === 'Paused';
+    this.music.intensity = next === 'Playing' || next === 'Countdown' ? 1 : 0;
+    this.audio.muffle(next === 'Crashing' || next === 'GameOver' || next === 'Paused');
     switch (next) {
       case 'Menu':
         this.ui.setSave(this.storage.data);
@@ -157,6 +174,7 @@ export class Game {
       case 'GameOver': {
         const s = this.sim;
         const newBest = this.storage.recordRun(s.score, s.distance, s.tokens);
+        if (newBest) this.sfx.fanfare();
         this.ui.showGameOver({
           score: s.score,
           distance: s.distance,
@@ -206,6 +224,14 @@ export class Game {
 
   private onCommand(cmd: Command): void {
     const state = this.machine.state;
+    if (cmd === 'mute') {
+      const st = this.storage.data.settings;
+      st.muted = !st.muted;
+      this.storage.save();
+      this.applyAudioSettings();
+      this.ui.toast(st.muted ? 'Sound off' : 'Sound on', 1);
+      return;
+    }
     if (cmd === 'pause') {
       if (state === 'Playing' || state === 'Countdown') this.machine.go('Paused');
       else if (state === 'Paused') this.machine.go('Playing');
@@ -235,6 +261,8 @@ export class Game {
     this.stumbleAge = 99;
     this.view?.resetScroll();
     this.ui.clearWarnings();
+    this.music.zone = 0;
+    this.music.tier = 0;
   }
 
   private update(dt: number): void {
@@ -247,7 +275,10 @@ export class Game {
       const before = Math.ceil(this.countdownLeft);
       this.countdownLeft -= dt;
       const after = Math.ceil(this.countdownLeft);
-      if (after !== before) this.ui.countdown(after);
+      if (after !== before) {
+        this.ui.countdown(after);
+        this.sfx.countdown(after === 0);
+      }
       if (this.countdownLeft <= 0) this.machine.go('Playing');
       return;
     }
@@ -261,25 +292,40 @@ export class Game {
     for (let i = 0; i < ev.count; i++) {
       const e = ev.get(i);
       if (!e) continue;
-      if (e.type === 'stumble') {
+      if (e.type === 'token') this.sfx.token(e.value);
+      else if (e.type === 'jump') this.sfx.jump(e.value === 1);
+      else if (e.type === 'land') this.sfx.land();
+      else if (e.type === 'slide') this.sfx.slide();
+      else if (e.type === 'lane') this.sfx.lane();
+      else if (e.type === 'tier') this.music.tier = e.value;
+      else if (e.type === 'stumble') {
         view.rig.shake(TUNING.camera.shakeStumble);
         this.stumbleAge = 0;
+        this.sfx.stumble();
       } else if (e.type === 'crash' || e.type === 'caught') {
         view.rig.shake(TUNING.camera.shakeCrash);
+        this.sfx.crash();
+        this.audio.muffle(true);
       } else if (e.type === 'powerup') {
         const t = e.label as PowerupType;
+        this.sfx.powerup(t);
         if (t === 'mystery') this.ui.toast('Mystery box…', 1.2);
         else this.ui.toast(POWERUP_NAMES[t]);
       } else if (e.type === 'mystery') {
+        this.sfx.mysteryReveal();
         if (e.label === 'tokens') this.ui.toast('Token shower!');
         else if (e.label === 'score') this.ui.toast(`+${TUNING.powerups.mysteryScore} score`);
       } else if (e.type === 'shieldBreak') {
+        this.sfx.shieldBreak();
         view.rig.shake(TUNING.camera.shakeStumble);
         this.ui.toast('Coffee saved you!');
       } else if (e.type === 'warning') {
         this.ui.warn(e.value);
+        this.sfx.warning();
       } else if (e.type === 'zone') {
         this.ui.toast(ZONES[e.value]?.name ?? '', 2);
+        this.music.zone = e.value;
+        this.sfx.zone();
       }
     }
     ev.clear();
@@ -321,6 +367,15 @@ export class Game {
       showChaser: state !== 'Menu',
     });
     this.renderer.render(view.scene, view.rig.camera);
+    const active = state === 'Playing';
+    const L = TUNING.lives;
+    this.sfx.loops(
+      active && pu.active('jetpack'),
+      active && pu.active('magnet'),
+      active || state === 'Crashing'
+        ? Math.max(0, 1 - (sim.gap - L.gapNear) / (L.gapFar - L.gapNear))
+        : 0,
+    );
 
     if (state === 'Playing' || state === 'Countdown' || state === 'Crashing') {
       this.ui.updateHud({
