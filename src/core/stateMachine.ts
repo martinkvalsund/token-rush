@@ -4,8 +4,8 @@ export type GameState =
 const ALLOWED: Record<GameState, readonly GameState[]> = {
   Boot: ['Menu', 'Playing'],
   Menu: ['Countdown', 'Playing'],
-  Countdown: ['Playing', 'Menu'],
-  Playing: ['Paused', 'Crashing'],
+  Countdown: ['Playing', 'Menu', 'Paused'],
+  Playing: ['Paused', 'Crashing', 'Menu'],
   Paused: ['Playing', 'Menu'],
   Crashing: ['GameOver'],
   GameOver: ['Menu', 'Countdown', 'Playing'],

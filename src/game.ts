@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { TUNING } from './data/tuning';
 import { FixedLoop } from './core/loop';
 import { Input, type Command } from './core/input';
-import { StateMachine } from './core/stateMachine';
+import { StateMachine, type GameState } from './core/stateMachine';
 import { seedFromUrl } from './core/rng';
+import { Storage } from './core/storage';
 import { Sim } from './sim/sim';
 import { CameraRig } from './render/cameraRig';
 import { Road } from './render/world';
@@ -12,6 +13,7 @@ import { EntityRenderer } from './render/entities';
 import { ModelLibrary } from './render/models/library';
 import { Chaser } from './render/chaser';
 import { DebugOverlay } from './ui/debugOverlay';
+import { UI, type UiAction } from './ui/ui';
 
 const GAME_OVER_LINES = [
   'Merge conflict unresolved.',
@@ -19,23 +21,26 @@ const GAME_OVER_LINES = [
   'Tech debt wins this time.',
 ];
 
+const COUNTDOWN_SECONDS = 3;
+
 export class Game {
+  readonly sim: Sim;
+  readonly machine = new StateMachine();
+  readonly storage = new Storage();
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly rig = new CameraRig();
   private readonly road = new Road();
   private readonly params: URLSearchParams;
-  private readonly sim: Sim;
   private readonly library = new ModelLibrary((m) => m);
   private readonly entities = new EntityRenderer(this.library);
   private readonly chaser = new Chaser(this.library);
-  private readonly machine = new StateMachine();
   private readonly input = new Input();
   private readonly loop: FixedLoop;
   private readonly debug: DebugOverlay;
   private readonly character = buildGreyboxRig();
   private readonly animator = new CharacterAnimator(this.character);
-  private readonly overlay = document.createElement('div');
+  private readonly ui = new UI();
   private prevX = 0;
   private prevY = 0;
   private prevDistance = 0;
@@ -43,6 +48,8 @@ export class Game {
   private lastDistance = 0;
   private stumbleAge = 99;
   private runCount = 0;
+  private countdownLeft = 0;
+  private settingsReturn: GameState = 'Menu';
 
   constructor(canvas: HTMLCanvasElement, params: URLSearchParams) {
     this.params = params;
@@ -66,53 +73,121 @@ export class Game {
       this.chaser.group,
     );
 
-    this.overlay.style.cssText =
-      'position:fixed;inset:0;display:none;place-items:center;text-align:center;color:#fff;font:600 28px system-ui;background:#0008;white-space:pre-line';
-    document.body.appendChild(this.overlay);
-
+    this.ui.onAction((a) => this.onUi(a));
+    this.ui.setSave(this.storage.data);
     this.input.onCommand((cmd) => this.onCommand(cmd));
-    this.machine.onChange((next) => this.onState(next));
+    this.machine.onChange((next, prev) => this.onState(next, prev));
     this.loop = new FixedLoop(
       (dt) => this.update(dt),
       (alpha, frameDt) => this.render(alpha, frameDt),
     );
 
     window.addEventListener('resize', () => this.resize());
+    window.addEventListener('blur', () => this.autoPause());
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.machine.state === 'Playing') this.machine.go('Paused');
+      if (document.hidden) this.autoPause();
       this.loop.resetClock();
     });
     this.resize();
   }
 
   start(): void {
-    this.machine.go('Playing');
+    this.machine.go('Menu');
     this.loop.start();
   }
 
-  private onState(next: string): void {
-    this.loop.paused = next === 'Paused';
-    if (next === 'Paused') this.showOverlay('Paused\nEsc to resume');
-    else if (next === 'GameOver') {
-      const line = GAME_OVER_LINES[this.sim.rng.int(0, GAME_OVER_LINES.length - 1)] ?? '';
-      this.showOverlay(`${line}\n${Math.floor(this.sim.distance)} m\nEnter to try again`);
-    } else this.showOverlay('');
+  private autoPause(): void {
+    const s = this.machine.state;
+    if (s === 'Playing' || s === 'Countdown') this.machine.go('Paused');
   }
 
-  private showOverlay(text: string): void {
-    this.overlay.textContent = text;
-    this.overlay.style.display = text ? 'grid' : 'none';
+  private onState(next: GameState, prev: GameState): void {
+    this.loop.paused = next === 'Paused';
+    switch (next) {
+      case 'Menu':
+        this.ui.setSave(this.storage.data);
+        this.ui.countdown(-1);
+        if (prev !== 'Boot') this.newRun();
+        this.ui.show('menu');
+        break;
+      case 'Countdown':
+        this.countdownLeft = COUNTDOWN_SECONDS;
+        this.ui.show('hud');
+        this.ui.countdown(COUNTDOWN_SECONDS);
+        break;
+      case 'Playing':
+        this.ui.countdown(-1);
+        this.ui.show('hud');
+        break;
+      case 'Paused':
+        this.ui.countdown(-1);
+        this.ui.show('pause');
+        break;
+      case 'GameOver': {
+        const s = this.sim;
+        const newBest = this.storage.recordRun(s.score, s.distance, s.tokens);
+        this.ui.showGameOver({
+          score: s.score,
+          distance: s.distance,
+          tokens: s.tokens,
+          newBest,
+          highScore: this.storage.data.highScore,
+          message: GAME_OVER_LINES[s.rng.int(0, GAME_OVER_LINES.length - 1)] ?? '',
+        });
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  private onUi(a: UiAction): void {
+    const state = this.machine.state;
+    switch (a) {
+      case 'play':
+        this.machine.go('Countdown');
+        break;
+      case 'retry':
+        this.newRun();
+        this.machine.go('Countdown');
+        break;
+      case 'resume':
+        this.machine.go('Playing');
+        break;
+      case 'quit':
+      case 'menu':
+        this.machine.go('Menu');
+        break;
+      case 'stats':
+        this.ui.setSave(this.storage.data);
+        this.ui.show('stats');
+        break;
+      case 'settings':
+      case 'help':
+        this.settingsReturn = state;
+        this.ui.toast('Coming soon');
+        break;
+      case 'back':
+        this.ui.show(this.settingsReturn === 'Paused' ? 'pause' : 'menu');
+        break;
+    }
   }
 
   private onCommand(cmd: Command): void {
     const state = this.machine.state;
     if (cmd === 'pause') {
-      if (state === 'Playing') this.machine.go('Paused');
+      if (state === 'Playing' || state === 'Countdown') this.machine.go('Paused');
       else if (state === 'Paused') this.machine.go('Playing');
+      else if (state === 'GameOver') this.machine.go('Menu');
+      else if (this.ui.screen !== 'menu' && state === 'Menu') this.ui.show('menu');
+      return;
+    }
+    if (state === 'Menu' && cmd === 'confirm' && this.ui.screen === 'menu') {
+      this.onUi('play');
       return;
     }
     if (state === 'GameOver' && (cmd === 'confirm' || cmd === 'jump')) {
-      this.restart();
+      this.onUi('retry');
       return;
     }
     if (state !== 'Playing') return;
@@ -120,12 +195,13 @@ export class Game {
       this.sim.command(cmd);
   }
 
-  private restart(): void {
+  private newRun(): void {
     this.runCount++;
     const fixed = this.params.get('seed');
     this.sim.reset(fixed ? this.sim.seed : (this.sim.seed + this.runCount * 7919) >>> 0);
     this.prevDistance = this.lastDistance = 0;
-    this.machine.go('Playing');
+    this.prevGap = this.sim.gap;
+    this.stumbleAge = 99;
   }
 
   private update(dt: number): void {
@@ -134,6 +210,14 @@ export class Game {
     this.prevDistance = this.sim.distance;
     this.prevGap = this.sim.gap;
     const state = this.machine.state;
+    if (state === 'Countdown') {
+      const before = Math.ceil(this.countdownLeft);
+      this.countdownLeft -= dt;
+      const after = Math.ceil(this.countdownLeft);
+      if (after !== before) this.ui.countdown(after);
+      if (this.countdownLeft <= 0) this.machine.go('Playing');
+      return;
+    }
     if (state === 'Playing' || state === 'Crashing') this.sim.step(dt);
     if (state === 'Playing' && !this.sim.alive) this.machine.go('Crashing');
     if (state === 'Crashing' && this.sim.deadTime > 1.6) this.machine.go('GameOver');
@@ -164,31 +248,44 @@ export class Game {
     const state = this.machine.state;
     let pose: Pose = 'run';
     let poseTime = 0;
-    if (state === 'Crashing' || state === 'GameOver') {
+    if (state === 'Menu' || state === 'Countdown') pose = 'idle';
+    else if (state === 'Crashing' || state === 'GameOver') {
       pose = 'crash';
       poseTime = this.sim.deadTime;
     } else if (this.stumbleAge < 0.6) {
       pose = 'stumble';
       poseTime = this.stumbleAge;
     }
-    this.animator.update(p, this.sim.speed, frameDt, pose, poseTime, this.sim.iframes > 0);
+    const animDt = state === 'Paused' ? 0 : frameDt;
+    this.animator.update(p, this.sim.speed, animDt, pose, poseTime, this.sim.iframes > 0);
 
     const renderDistance = this.prevDistance + (this.sim.distance - this.prevDistance) * alpha;
     this.road.scroll(renderDistance - this.lastDistance);
     this.lastDistance = renderDistance;
-    this.entities.update(this.sim, renderDistance, frameDt);
+    this.entities.update(this.sim, renderDistance, animDt);
     const gap = this.prevGap + (this.sim.gap - this.prevGap) * alpha;
     this.chaser.update(
       gap,
       x,
       Math.max(this.sim.speed, state === 'Crashing' ? 8 : 0),
-      frameDt,
-      true,
+      animDt,
+      state !== 'Menu',
     );
 
     const { start, max } = TUNING.speed;
     this.rig.update((this.sim.speed - start) / (max - start), x, frameDt, y);
     this.renderer.render(this.scene, this.rig.camera);
+
+    if (state === 'Playing' || state === 'Countdown' || state === 'Crashing') {
+      const s = this.sim;
+      this.ui.updateHud({
+        score: s.score,
+        distance: s.distance,
+        tokens: s.tokens,
+        lives: s.lives,
+        multiplier: s.multiplier,
+      });
+    }
     this.debug.update(frameDt, {
       speed: this.sim.speed,
       distance: this.sim.distance,

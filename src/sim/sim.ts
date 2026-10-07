@@ -50,6 +50,12 @@ export class Sim {
   /** Debug: ignore all hits. */
   god = false;
 
+  score = 0;
+  tokens = 0;
+  /** Tokens picked up in a row without a long gap (raises the pickup pitch). */
+  streak = 0;
+  private streakTimer = 0;
+
   private readonly ctx = {
     superJump: false,
     groundAt: (x: number) => groundAt(this.world.obstacles.items, x, this.player.y),
@@ -76,6 +82,10 @@ export class Sim {
     this.alive = true;
     this.cause = 'none';
     this.deadTime = 0;
+    this.score = 0;
+    this.tokens = 0;
+    this.streak = 0;
+    this.streakTimer = 0;
     this.events.clear();
     for (const pool of Object.values(this.world)) pool.clear();
     this.generator.reset();
@@ -89,6 +99,11 @@ export class Sim {
   /** Lives shown as hard hats: 2 when clean, 1 while the boulder is closing in. */
   get lives(): number {
     return this.gap >= L.gapFar - 0.01 ? 2 : 1;
+  }
+
+  /** Score multiplier (power-ups raise it). */
+  get multiplier(): number {
+    return 1;
   }
 
   get invulnerable(): boolean {
@@ -109,6 +124,7 @@ export class Sim {
     this.slowTimer = Math.max(0, this.slowTimer - dt);
     this.speed = speedAt(this.elapsed) * (this.slowTimer > 0 ? 1 - L.stumbleSlowdown : 1);
     this.distance += this.speed * dt;
+    this.score += this.speed * dt * this.multiplier;
     if (this.stumbleTime > L.stumbleIFrames)
       this.gap = Math.min(L.gapFar, this.gap + L.gapRecovery * dt);
 
@@ -123,6 +139,25 @@ export class Sim {
     this.updateEntities();
     stepPlayer(this.player, dt, this.ctx, this.events);
     this.collide();
+    if (this.alive) this.collectTokens(dt);
+  }
+
+  private collectTokens(dt: number): void {
+    const p = this.player;
+    const r = TUNING.tokens.pickupRadius;
+    const bodyY = p.y + 0.9;
+    this.streakTimer -= dt;
+    if (this.streakTimer <= 0) this.streak = 0;
+    for (const t of this.world.tokens.items) {
+      if (!t.active || Math.abs(t.z) > r) continue;
+      if (Math.abs(t.x - p.x) > r || Math.abs(t.y - bodyY) > r + 0.5) continue;
+      t.active = false;
+      this.tokens++;
+      this.streak++;
+      this.streakTimer = 0.6;
+      this.score += TUNING.tokens.score * this.multiplier;
+      this.events.push('token', this.streak);
+    }
   }
 
   private collide(): void {

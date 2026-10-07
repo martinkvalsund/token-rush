@@ -95,3 +95,20 @@ describe('collisions', () => {
     expect(sim.gap).toBe(TUNING.lives.gapFar);
   });
 });
+
+describe('tokens and score', () => {
+  it('collects tokens in the player lane and scores them', () => {
+    const sim = arena('jersey_barrier', 0, 400);
+    for (const at of [10, 12, 14]) sim.generator.addToken(at, 0, 1);
+    sim.generator.addToken(16, 2.4, 1); // other lane
+    run(sim, 1.5);
+    expect(sim.tokens).toBe(3);
+    expect(sim.score).toBeGreaterThan(30);
+  });
+
+  it('scores distance over time', () => {
+    const sim = arena('jersey_barrier', 0, 400);
+    run(sim, 2);
+    expect(sim.score).toBeCloseTo(sim.distance, 0);
+  });
+});
