@@ -17,9 +17,17 @@ export function topAt(o: Obstacle): number {
   return o.bottom + o.h;
 }
 
-/** Things the player can stand on: ramps, platforms, and the tops of low obstacles and blocks. */
+/**
+ * Things the player can stand on: ramps, platforms and block tops (reachable with boots).
+ * Low obstacles are not: landing on one would leave the runner raised into overhead bars.
+ */
 export function canStandOn(o: Obstacle): boolean {
-  return o.cls === 'ramp' || o.cls === 'platform' || o.cls === 'block' || o.cls === 'low';
+  return o.cls === 'ramp' || o.cls === 'platform' || o.cls === 'block';
+}
+
+/** Ramps and platforms (reached via a ramp at speed) allow a bigger step than other tops. */
+function stepTolerance(o: Obstacle): number {
+  return o.cls === 'ramp' || o.cls === 'platform' ? P.stepUp : P.landTolerance;
 }
 
 /** Support height under the player at x (z = 0). Only counts tops the feet are already near. */
@@ -29,7 +37,7 @@ export function groundAt(obstacles: readonly Obstacle[], x: number, feetY: numbe
     if (!o.active || !canStandOn(o)) continue;
     if (Math.abs(o.z) > o.d / 2 || Math.abs(x - o.x) > o.w / 2) continue;
     const top = topAt(o);
-    const tolerance = o.cls === 'ramp' ? P.stepUp : P.landTolerance;
+    const tolerance = stepTolerance(o);
     if (feetY >= top - tolerance && top > g) g = top;
   }
   return g;
@@ -53,7 +61,7 @@ export function classify(p: PlayerState, o: Obstacle): HitKind {
   const top = topAt(o);
   if (head <= o.bottom || feet >= top - 0.02) return 'none';
   // Standing on it (platform/block/low top) is not a hit.
-  if (canStandOn(o) && feet >= top - P.landTolerance) return 'none';
+  if (canStandOn(o) && feet >= top - stepTolerance(o)) return 'none';
   if (prevZ && !prevX) return 'side';
   return 'front';
 }

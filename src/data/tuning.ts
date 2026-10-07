@@ -48,7 +48,7 @@ export const TUNING = {
     gapFar: 14,
     gapNear: 4,
     stumbleGapLoss: 10,
-    gapRecovery: 1.25,
+    gapRecovery: 1.0,
     stumbleSlowdown: 0.2,
     stumbleSlowTime: 0.6,
     stumbleIFrames: 1.2,

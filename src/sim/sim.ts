@@ -177,7 +177,8 @@ export class Sim {
         this.player.softFall = true;
         this.player.vy = 0;
         this.player.grounded = false;
-        this.iframes = Math.max(this.iframes, TUNING.powerups.jetpackLandIFrames);
+        // Cover the slow descent (~1.1 s from 5.5 m) plus time to react after touching down.
+        this.iframes = Math.max(this.iframes, 1.2 + TUNING.powerups.jetpackLandIFrames);
       }
       this.events.push('powerupEnd', TIMED.indexOf(t), t);
     });

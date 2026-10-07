@@ -5,7 +5,7 @@ import { ZONES } from '../data/zones';
 import { SIGNS } from '../data/signs';
 import type { Rng } from '../core/rng';
 import { buildPatterns, type Pattern, type Row } from './pattern';
-import { propagate, startStates, timingFor, type PlanState } from './fairness';
+import { propagate, startStates, timingFor, type PlanState, type Timing } from './fairness';
 import { tierAt, tierSpeedRange, zoneAt } from './difficulty';
 import { Pool } from './pool';
 import {
@@ -23,6 +23,9 @@ export const PATTERNS: readonly Pattern[] = buildPatterns([
 ]);
 const REST = PATTERNS.find((p) => p.id === 'rest-line-c');
 const EMPTY_ROW: Row = ['.', '.', '.'];
+/** How far past its due distance a power-up may wait for a 'P' spot before being placed anyway. */
+const POWERUP_SLACK = 120;
+const GATE_ROWS: readonly Row[] = [EMPTY_ROW, EMPTY_ROW, EMPTY_ROW];
 
 export interface EmittedRow {
   at: number;
@@ -46,8 +49,8 @@ export class Generator {
   private lastId = '';
   private zone = -1;
   private rowIndex = 0;
-  private statesSlow: PlanState[] = startStates();
-  private statesFast: PlanState[] = startStates();
+  /** Reachable states at each sample speed (see sampleSpeeds). */
+  private states: PlanState[][] = SAMPLES.map(() => startStates());
   private nextPowerupAt = 0;
   private lastPowerup: PowerupType | null = null;
   /** Recently emitted rows (for the bot and debug overlay). */
@@ -71,8 +74,7 @@ export class Generator {
     this.lastId = '';
     this.zone = -1;
     this.rowIndex = 0;
-    this.statesSlow = startStates();
-    this.statesFast = startStates();
+    this.states = SAMPLES.map(() => startStates());
     const [a, b] = TUNING.powerups.firstAt;
     this.nextPowerupAt = this.rng.range(a, b);
     this.lastPowerup = null;
@@ -85,16 +87,17 @@ export class Generator {
   update(distance: number): void {
     const horizon = distance + TUNING.world.spawnDistance;
     while (this.cursor < horizon) {
-      const zone = zoneAt(this.cursor);
-      if (zone !== this.zone) {
-        if (this.zone !== -1) this.emitTransition(zone);
-        this.zone = zone;
-        // Discard a half-emitted pattern from the previous zone.
-        this.queue = [];
+      if (this.queue.length === 0) {
+        // Zones only change between patterns, so every pattern is emitted whole.
+        const zone = zoneAt(this.cursor);
+        if (zone !== this.zone) {
+          if (this.zone !== -1) this.emitTransition(zone);
+          this.zone = zone;
+        }
+        this.choosePattern();
       }
-      if (this.queue.length === 0) this.choosePattern();
       const row = this.queue.shift() ?? EMPTY_ROW;
-      this.emitRow(row, this.cursor, zone);
+      this.emitRow(row, this.cursor, this.zone);
       this.cursor += TUNING.world.rowSpacing;
       this.rowIndex++;
     }
@@ -123,40 +126,69 @@ export class Generator {
         }
       }
       if (!pick) break;
-      const slow = propagate(pick.rows, this.statesSlow, timingFor(range.min));
-      const fast = propagate(pick.rows, this.statesFast, timingFor(range.max));
-      if (slow.length > 0 && fast.length > 0) {
-        this.accept(pick, slow, fast);
-        return;
-      }
+      if (this.tryAccept(pick, tier, range.min, range.max)) return;
     }
     if (!REST) throw new Error('rest pattern missing');
     // The rest pattern has no obstacles, so it is passable from any state.
     this.accept(
       REST,
-      propagate(REST.rows, this.statesSlow, timingFor(range.min)),
-      propagate(REST.rows, this.statesFast, timingFor(range.max)),
+      sampleSpeeds(range).map((v, i) =>
+        propagate(REST.rows, this.states[i] ?? startStates(), timingFor(v)),
+      ),
     );
   }
 
-  private accept(p: Pattern, slow: PlanState[], fast: PlanState[]): void {
-    this.queue = [...p.rows];
+  /**
+   * Patterns are stored with their empty padding trimmed. Put back only as many empty rows
+   * as the join needs (plus breathing room at low tiers), so the track stays dense but fair.
+   */
+  private tryAccept(pick: Pattern, tier: number, vMin: number, vMax: number): boolean {
+    const core = trimmed(pick);
+    const timings = sampleSpeeds({ min: vMin, max: vMax }).map((v) => timingFor(v));
+    const minGap = Math.max(2, 4 - Math.floor(tier / 2));
+    // The last emitted row goes in front as context (a moving hazard there also blocks
+    // the next row), and the search starts after it.
+    const prev = this.history[this.history.length - 1]?.row ?? EMPTY_ROW;
+    for (let gap = minGap; gap <= 7; gap++) {
+      const rows = withGap(core, gap);
+      const ctx = [prev, ...rows];
+      const next: PlanState[][] = [];
+      let ok = true;
+      for (let i = 0; i < timings.length && ok; i++) {
+        const tm = timings[i];
+        const from = this.states[i] ?? startStates();
+        if (!tm) continue;
+        const end = propagate(ctx, from, tm, 1);
+        ok = end.length > 0 && fromEveryCalmLane(ctx, from, tm);
+        next.push(end);
+      }
+      if (!ok) continue;
+      this.accept(pick, next, rows);
+      return true;
+    }
+    return false;
+  }
+
+  private accept(p: Pattern, states: PlanState[][], rows: readonly Row[] = p.rows): void {
+    this.queue = [...rows];
     this.queueId = p.id;
     this.lastId = p.id;
-    this.statesSlow = slow.length > 0 ? slow : startStates();
-    this.statesFast = fast.length > 0 ? fast : startStates();
+    this.states = states.map((st) => (st.length > 0 ? st : startStates()));
   }
 
   private emitTransition(zone: number): void {
     const gate = ZONES[zone]?.id === 'tunnel' ? 'tunnel_portal' : 'site_gate';
     this.addScenery(gate, this.cursor, 0, 0, 1, -1, zone);
-    for (let i = 0; i < 3; i++) {
+    this.queueId = 'zone-gate';
+    for (let i = 0; i < GATE_ROWS.length; i++) {
       this.emitRow(EMPTY_ROW, this.cursor, zone);
       this.cursor += TUNING.world.rowSpacing;
     }
-    // Any state is fine after three empty rows.
-    this.statesSlow = startStates();
-    this.statesFast = startStates();
+    // Carry the reachable states through the empty gate rows (do not assume any lane).
+    const range = tierSpeedRange(tierAt(this.cursor));
+    this.states = sampleSpeeds(range).map((v, i) =>
+      propagate(GATE_ROWS, this.states[i] ?? startStates(), timingFor(v)),
+    );
   }
 
   private emitRow(row: Row, at: number, zone: number): void {
@@ -199,15 +231,8 @@ export class Generator {
           this.addToken(at + 1, x, 1);
           break;
         case 'P':
-          if (at >= this.nextPowerupAt) {
-            const type = this.pickPowerup();
-            this.spawnedPowerups.push(type);
-            this.addPickup(type, at, x);
-            const [a, b] = TUNING.powerups.every;
-            this.nextPowerupAt = at + this.rng.range(a, b);
-          } else {
-            this.addToken(at, x, 1);
-          }
+          if (at >= this.nextPowerupAt) this.placePowerup(at, x);
+          else this.addToken(at, x, 1);
           break;
         case '?':
           this.addPickup('mystery', at, x);
@@ -215,6 +240,12 @@ export class Generator {
         default:
           break;
       }
+    }
+
+    // Overdue power-up (no 'P' spot came along): put it on an empty cell of a quiet row.
+    if (at >= this.nextPowerupAt + POWERUP_SLACK && row.every((c) => c === '.' || c === 'T')) {
+      const lane = row.indexOf('.') >= 0 ? (row.indexOf('.') as Lane) : 1;
+      this.placePowerup(at, laneX(lane));
     }
 
     // Jetpack sky trail: a line of tokens high above the track.
@@ -280,6 +311,14 @@ export class Generator {
         break;
       }
     }
+  }
+
+  private placePowerup(at: number, x: number): void {
+    const type = this.pickPowerup();
+    this.spawnedPowerups.push(type);
+    this.addPickup(type, at, x);
+    const [a, b] = TUNING.powerups.every;
+    this.nextPowerupAt = at + this.rng.range(a, b);
   }
 
   private pickPowerup(): PowerupType {
@@ -366,12 +405,82 @@ export class Generator {
   }
 }
 
+/** Joins are validated as if the game ran this much faster than the tier's top speed. */
+const JOIN_SPEED_MARGIN = 1.12;
+/**
+ * Feasibility is not monotonic in speed (one long slide can cover two bars at top speed,
+ * two short slides fit at low speed, neither in between), so joins are checked at several
+ * speeds across the tier's range.
+ */
+const SAMPLES = [0, 0.25, 0.5, 0.75, 1, 1.12] as const;
+function sampleSpeeds(range: { min: number; max: number }): number[] {
+  return SAMPLES.map((f) =>
+    f <= 1 ? range.min + (range.max - range.min) * f : range.max * JOIN_SPEED_MARGIN,
+  );
+}
+const trimCache = new Map<string, readonly Row[]>();
+const isEmpty = (r: Row) => r[0] === '.' && r[1] === '.' && r[2] === '.';
+
+/** A pattern's rows without leading and trailing all-empty rows. */
+function trimmed(p: Pattern): readonly Row[] {
+  let t = trimCache.get(p.id);
+  if (!t) {
+    let a = 0;
+    let b = p.rows.length;
+    while (a < b && p.rows[a] && isEmpty(p.rows[a] as Row)) a++;
+    while (b > a && p.rows[b - 1] && isEmpty(p.rows[b - 1] as Row)) b--;
+    t = p.rows.slice(a, b);
+    trimCache.set(p.id, t);
+  }
+  return t;
+}
+
+function withGap(core: readonly Row[], gap: number): Row[] {
+  const out: Row[] = [];
+  for (let i = 0; i < gap; i++) out.push(EMPTY_ROW);
+  for (const r of core) out.push(r);
+  return out;
+}
+
+/**
+ * Stronger join rule: whichever lane the player ends the previous pattern in (while
+ * running), the new pattern must still be passable. Otherwise a choice made before the
+ * new rows were visible could become a dead end.
+ */
+function fromEveryCalmLane(
+  rows: readonly Row[],
+  states: readonly PlanState[],
+  tm: Timing,
+): boolean {
+  for (const lane of [0, 1, 2] as Lane[]) {
+    let worst: PlanState | undefined;
+    for (const st of states)
+      if (st.mode === 'run' && st.lane === lane && (!worst || st.cool > worst.cool)) worst = st;
+    if (worst && propagate(rows, [worst], tm, 1).length === 0) return false;
+  }
+  return true;
+}
+
 /** Harder patterns become more likely as the tier rises. */
 function weightOf(p: Pattern, tier: number): number {
-  const hard = p.minTier >= 2 || p.tags?.includes('moving') || p.tags?.includes('ramp');
+  const hard = p.minTier >= 2 || p.tags?.includes('moving');
+  // Ramps are a breather (no input needed), so they never get the hard-pattern boost.
+  if (p.tags?.includes('ramp')) return p.weight * 0.7;
   const rest = p.tags?.includes('rest');
   let w = p.weight;
-  if (hard) w *= 1 + tier * 0.25;
-  if (rest) w *= Math.max(0.4, 1 - tier * 0.08);
+  if (hard) w *= 1 + tier * 0.3;
+  if (rest) w *= Math.max(0.3, 1 - tier * 0.1);
+  // Patterns that never touch the centre let a player sit there; fade them out as tiers rise.
+  if (!rest && !touchesCentre(p)) w *= Math.max(0.25, 1 - tier * 0.1);
   return w;
+}
+
+const centreCache = new Map<string, boolean>();
+function touchesCentre(p: Pattern): boolean {
+  let hit = centreCache.get(p.id);
+  if (hit === undefined) {
+    hit = p.rows.some((r) => !['.', 'T', 'P', '?'].includes(r[1]));
+    centreCache.set(p.id, hit);
+  }
+  return hit;
 }

@@ -13,3 +13,7 @@
 - [x] Phase 10 — UI, juice, post-processing, settings
 - [x] Phase 11 — Bot, balancing, performance
 - [x] Phase 12 — Polish and release
+
+## Known issues
+
+- **Soak residual (Phase 11):** the perfect autoplay bot survives 23 of 24 four-minute seeded runs (`npm run soak`). Seed 114 dies at about 4 km (tier 8) on two stacked overhead bars right after a `boo` row. At some speeds one long slide covers both bars; at others it does not. The generator samples six speeds per tier and misses this one. The CI bot test (6 seeds × 3 min) has zero deaths.
