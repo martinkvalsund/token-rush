@@ -13,6 +13,7 @@ import { Chaser } from './chaser';
 import { ZoneLook } from './zones';
 import type { ModelLibrary } from './models/library';
 import { Particles, SpeedLines } from './vfx';
+import { Cosmetics } from './cosmetics';
 import type { SimEvent } from '../sim/events';
 import type { Level } from './quality';
 
@@ -40,6 +41,7 @@ export class View {
   readonly chaser: Chaser;
   readonly character: CharacterRig;
   readonly animator: CharacterAnimator;
+  readonly cosmetics: Cosmetics;
   readonly zones: ZoneLook;
   readonly shield: THREE.Mesh;
   readonly particles = new Particles();
@@ -120,6 +122,7 @@ export class View {
       this.scenery.group,
       this.chaser.group,
     );
+    this.cosmetics = new Cosmetics(lib, this.character, this.particles, this.scene);
   }
 
   resetScroll(): void {
@@ -213,6 +216,7 @@ export class View {
     const p = sim.player;
     this.character.root.position.set(f.x, f.y, 0);
     this.animator.update(p, sim.speed, f.dt, f.pose, f.poseTime, f.blink);
+    this.cosmetics.update(f.dt, f.x, f.y, f.pose !== 'idle' && sim.alive, p.flying, sim.speed);
     // Squash and stretch: a damped spring back to 1.
     this.squashVel += (1 - this.squash) * 180 * f.dt;
     this.squashVel *= Math.max(0, 1 - 14 * f.dt);

@@ -16,13 +16,13 @@ if not _root:
     raise RuntimeError("Set TOKEN_RUSH_ROOT to the repository path before running build.py")
 TOKEN_RUSH_ROOT = _root
 _g = globals()
-for _f in ("lib.py", "props.py", "vehicles.py", "scenery.py", "character.py"):
+for _f in ("lib.py", "props.py", "vehicles.py", "scenery.py", "character.py", "cosmetics.py"):
     _path = os.path.join(_root, "art", "blender", _f)
     if os.path.exists(_path):
         exec(open(_path).read(), _g)
 
 REGISTRY = {}
-for _name in ("PROPS", "VEHICLES", "SCENERY", "CHARACTER"):
+for _name in ("PROPS", "VEHICLES", "SCENERY", "CHARACTER", "COSMETICS"):
     REGISTRY.update(_g.get(_name, {}))
 
 _only = _g.get("ONLY") or list(REGISTRY)

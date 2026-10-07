@@ -45,3 +45,14 @@ export const ICON_STATS = icon('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>');
 export const ICON_PAUSE = icon(
   '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>',
 );
+export const ICON_SHOP = icon(
+  '<path d="M5 8h14l-1.2 11.2a1.5 1.5 0 0 1-1.5 1.3H7.7a1.5 1.5 0 0 1-1.5-1.3z"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/>',
+);
+export const ICON_LOCK = icon(
+  '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+);
+export const ICON_CHECK = icon('<path d="M5 12.5l4.5 4.5L19 7.5"/>');
+export const ICON_GIFT = icon(
+  '<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M3 9h18M12 9v11M12 9c-1.5-4-6-4-5.5-1.2C7 9 12 9 12 9zM12 9c1.5-4 6-4 5.5-1.2C17 9 12 9 12 9z"/>',
+);
+export const ICON_BACK = icon('<path d="M15 5l-7 7 7 7"/>');

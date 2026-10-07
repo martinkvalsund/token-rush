@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import palette from '../../art/palette.json';
+import type { Recolor } from '../data/shop';
 
 /**
  * Every Blender model's UVs point at a swatch in this 8x8 palette, so one material draws
  * everything. Emissive swatches (names starting with glow_) also feed the emissive map.
  */
-function paletteTexture(emissiveOnly: boolean): THREE.DataTexture {
+function paletteTexture(emissiveOnly: boolean, recolor: Recolor = {}): THREE.DataTexture {
   const n = palette.size;
   const data = new Uint8Array(n * n * 4);
   palette.colors.forEach((c, i) => {
@@ -13,8 +14,9 @@ function paletteTexture(emissiveOnly: boolean): THREE.DataTexture {
     // glTF flips V (v' = 1 - v), so the first palette row lives at the bottom of the data.
     const y = Math.floor(i / n);
     const o = (y * n + x) * 4;
-    const v = Number.parseInt(c.hex.slice(1), 16);
-    const on = !emissiveOnly || c.emissive;
+    const over = recolor[c.name];
+    const v = Number.parseInt((over?.hex ?? c.hex).slice(1), 16);
+    const on = !emissiveOnly || (over ? !!over.glow : c.emissive);
     data[o] = on ? (v >> 16) & 255 : 0;
     data[o + 1] = on ? (v >> 8) & 255 : 0;
     data[o + 2] = on ? v & 255 : 0;
@@ -65,11 +67,13 @@ const PAINT: [number, number] = [0.42, 0.08];
 const GLOW: [number, number] = [0.5, 0];
 
 /** glTF-style ORM map: G = roughness, B = metalness. */
-function surfaceTexture(): THREE.DataTexture {
+function surfaceTexture(recolor: Recolor = {}): THREE.DataTexture {
   const n = palette.size;
   const data = new Uint8Array(n * n * 4);
   palette.colors.forEach((c, i) => {
-    const [rough, metal] = SURFACE[c.name] ?? (c.emissive ? GLOW : PAINT);
+    const over = recolor[c.name];
+    const [rough, metal] =
+      over?.surface ?? (over?.glow ? GLOW : (SURFACE[c.name] ?? (c.emissive ? GLOW : PAINT)));
     const o = (Math.floor(i / n) * n + (i % n)) * 4;
     data[o] = 255;
     data[o + 1] = Math.round(rough * 255);
@@ -86,12 +90,11 @@ function surfaceTexture(): THREE.DataTexture {
 
 let shared: THREE.MeshStandardMaterial | null = null;
 
-export function paletteMaterial(): THREE.MeshStandardMaterial {
-  if (shared) return shared;
-  const surface = surfaceTexture();
-  shared = new THREE.MeshStandardMaterial({
-    map: paletteTexture(false),
-    emissiveMap: paletteTexture(true),
+function buildMaterial(recolor: Recolor = {}): THREE.MeshStandardMaterial {
+  const surface = surfaceTexture(recolor);
+  return new THREE.MeshStandardMaterial({
+    map: paletteTexture(false, recolor),
+    emissiveMap: paletteTexture(true, recolor),
     emissive: 0xffffff,
     emissiveIntensity: 1.5,
     roughnessMap: surface,
@@ -101,7 +104,25 @@ export function paletteMaterial(): THREE.MeshStandardMaterial {
     // Models are smooth-shaded with crisp creases (bevelled in Blender).
     flatShading: false,
   });
+}
+
+export function paletteMaterial(): THREE.MeshStandardMaterial {
+  shared ??= buildMaterial();
   return shared;
+}
+
+/** A palette material with some swatches recoloured (the character's outfit, skin and hair). */
+export function recoloredMaterial(recolor: Recolor): THREE.MeshStandardMaterial {
+  return buildMaterial(recolor);
+}
+
+/** Free a material made by recoloredMaterial (its textures are unique to it). */
+export function disposeRecolored(m: THREE.MeshStandardMaterial): void {
+  if (m === shared) return;
+  m.map?.dispose();
+  m.emissiveMap?.dispose();
+  m.roughnessMap?.dispose();
+  m.dispose();
 }
 
 export function paletteHex(name: string): number {

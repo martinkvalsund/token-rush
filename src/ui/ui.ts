@@ -6,6 +6,7 @@ import {
   ICON_HELP,
   ICON_PAUSE,
   ICON_PLAY,
+  ICON_SHOP,
   ICON_STATS,
   ICON_TOKEN,
   POWERUP_COLORS,
@@ -15,10 +16,10 @@ import {
 import type { TimedPowerup } from '../sim/powerups';
 
 export type UiAction =
-  'play' | 'resume' | 'quit' | 'retry' | 'menu' | 'settings' | 'help' | 'stats' | 'back';
+  'play' | 'resume' | 'quit' | 'retry' | 'menu' | 'settings' | 'help' | 'stats' | 'shop' | 'back';
 
 export type ScreenName =
-  'menu' | 'hud' | 'pause' | 'gameover' | 'stats' | 'settings' | 'help' | 'none';
+  'menu' | 'hud' | 'pause' | 'gameover' | 'stats' | 'settings' | 'help' | 'shop' | 'none';
 
 export interface RunResult {
   score: number;
@@ -26,6 +27,8 @@ export interface RunResult {
   tokens: number;
   newBest: boolean;
   highScore: number;
+  /** Spendable tokens after this run was banked. */
+  wallet: number;
   message: string;
 }
 
@@ -136,7 +139,10 @@ export class UI {
     const play = this.button(`${ICON_PLAY}<span>Play</span>`, 'play');
     play.classList.add('play');
     const grid = h('div', 'menu-grid');
+    const shop = this.button(`${ICON_SHOP}<span>Shop</span>`, 'shop', true);
+    shop.classList.add('shop-btn');
     grid.append(
+      shop,
       this.button(`${ICON_HELP}<span>How to play</span>`, 'help', true),
       this.button(`${ICON_GEAR}<span>Settings</span>`, 'settings', true),
       this.button(`${ICON_STATS}<span>Stats</span>`, 'stats', true),
@@ -222,11 +228,11 @@ export class UI {
 
   setSave(save: SaveData): void {
     this.bestEl.innerHTML =
-      save.highScore > 0
+      save.highScore > 0 || save.wallet > 0
         ? [
             ['Highscore', fmt(save.highScore)],
             ['Best run', `${fmt(save.bestDistance)} m`],
-            ['Tokens banked', fmt(save.totalTokens)],
+            ['Tokens to spend', fmt(save.wallet)],
           ]
             .map(([k, v]) => `<div class="chip"><small>${k}</small><b>${v}</b></div>`)
             .join('')
@@ -236,6 +242,8 @@ export class UI {
       ['Best distance', `${fmt(save.bestDistance)} m`],
       ['Tokens collected', fmt(save.totalTokens)],
       ['Prompts affordable', fmt(save.totalTokens / TUNING.tokens.promptsPer)],
+      ['Tokens to spend', fmt(save.wallet)],
+      ['Shop items owned', fmt(save.owned.length)],
       ['Runs', fmt(save.runs)],
     ]
       .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`)
@@ -265,11 +273,21 @@ export class UI {
       'joke',
       `${ICON_TOKEN}<span>That's enough tokens for <b>${prompts}</b> prompt${prompts === 1 ? '' : 's'}.</span>`,
     );
+    const bank = h(
+      'p',
+      'bank',
+      `+${fmt(r.tokens)} banked · <b>${fmt(r.wallet)}</b> tokens to spend in the shop`,
+    );
     const row = h('div', 'row');
-    row.append(this.button('Play again', 'retry'), this.button('Menu', 'menu', true));
+    row.append(
+      this.button('Play again', 'retry'),
+      this.button(`${ICON_SHOP}<span>Shop</span>`, 'shop', true),
+      this.button('Menu', 'menu', true),
+    );
     p.append(
       stats,
       joke,
+      bank,
       row,
       h(
         'div',

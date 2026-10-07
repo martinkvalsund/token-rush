@@ -51,7 +51,13 @@ Trackpad play needs no clicking, like swiping on a phone: in the Trackpad scheme
 - **Lives the original way:** a stumble greys out a hard hat and brings the Tech Debt boulder into view. Stumble again before it falls back and it catches you. Hitting a vehicle head-on ends the run.
 - **Power-ups:** Laptop (token magnet), Energy drink (jetpack), Coffee (shield), AI spark (×2 score), Safety boots (super jump), Mystery box.
 - **Difficulty:** ramps up quickly: the hardest obstacle tier arrives after about a minute, and speed keeps climbing for about three minutes, to 36 m/s. A typical non-perfect run lasts around 1–3 minutes.
-- **Saved locally:** highscore, best distance, total tokens ("enough tokens for N prompts") and all settings.
+- **Token shop:** spend banked tokens on cosmetics, tried on live on the 3D character before you buy. Nothing in the shop changes gameplay.
+  - Outfits: palette recolours of the developer.
+  - Headgear and companions: Blender models; companions float beside you while you run.
+  - Particle trails.
+  - Free skin tones and hair colours.
+  - A daily crate of free tokens.
+- **Saved locally:** highscore, best distance, total tokens ("enough tokens for N prompts"), the shop wallet, items bought and equipped, and all settings.
 
 ## Development
 
@@ -77,7 +83,7 @@ src/
   render/   three.js view: Blender model library + instancing, zones, sky, VFX, post, camera
   audio/    WebAudio engine, synthesised SFX, procedural music
   ui/       DOM overlays: menu, HUD, settings, help, pause, game over
-  data/     tuning.ts (every gameplay number), patterns, zones, obstacles, signs
+  data/     tuning.ts (every gameplay number), patterns, zones, obstacles, signs, shop catalogue
 art/        Blender build scripts, palette and the .blend source
 ```
 
@@ -99,6 +105,8 @@ To rebuild and re-export all models into `public/models/`, run this in Blender's
 TOKEN_RUSH_ROOT = '/path/to/token-rush'
 exec(open(TOKEN_RUSH_ROOT + '/art/blender/build.py').read())
 ```
+
+Shop headgear and companions are built by `art/blender/cosmetics.py`. Headgear is modelled in head-local coordinates and replaces the developer's separate `hardhat` object. Parts named `rotor*` or `propeller` spin in the game.
 
 Set `ONLY = ['excavator']` first to rebuild a subset. `art/token-rush-assets.blend` holds the generated sources. If a `.glb` is missing, the game falls back to labelled boxes.
 

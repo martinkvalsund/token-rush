@@ -14,6 +14,7 @@
 - [x] Phase 11 — Bot, balancing, performance
 - [x] Phase 12 — Polish and release (signage and easter eggs, bug-bash flows, README media)
 - [x] Phase 13 — Blender assets (done as part of Phase 7 at the owner's request)
+- [x] Token shop — cosmetics (outfits, headgear, companions, trails, skin, hair), daily crate
 
 ## Known issues
 

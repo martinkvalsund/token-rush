@@ -62,4 +62,15 @@ export const MODEL_NAMES = [
   'tunnel_portal',
   'skyline',
   'rubber_duck',
+  // shop cosmetics
+  'hat_headlamp',
+  'hat_headset',
+  'hat_propeller',
+  'hat_viking',
+  'hat_wizard',
+  'hat_crown',
+  'pet_duck',
+  'pet_token',
+  'pet_bot',
+  'pet_drone',
 ] as const;
