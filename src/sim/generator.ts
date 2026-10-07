@@ -1,6 +1,6 @@
 import { TUNING, laneX, type Lane } from '../data/tuning';
 import { OBSTACLE_INDEX, obstacleKind, type ObstacleId } from '../data/obstacles';
-import { PATTERN_DEFS } from '../data/patterns';
+import { ADVANCED_PATTERN_DEFS, PATTERN_DEFS } from '../data/patterns';
 import { ZONES } from '../data/zones';
 import { SIGNS } from '../data/signs';
 import type { Rng } from '../core/rng';
@@ -17,7 +17,10 @@ import {
   type Token,
 } from './entities';
 
-export const PATTERNS: readonly Pattern[] = buildPatterns(PATTERN_DEFS);
+export const PATTERNS: readonly Pattern[] = buildPatterns([
+  ...PATTERN_DEFS,
+  ...ADVANCED_PATTERN_DEFS,
+]);
 const REST = PATTERNS.find((p) => p.id === 'rest-line-c');
 const EMPTY_ROW: Row = ['.', '.', '.'];
 

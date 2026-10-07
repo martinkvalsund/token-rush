@@ -75,8 +75,9 @@ export const TUNING = {
     telegraph: 1.2,
     warnAhead: 2.6,
     oncomingSpeed: 8,
+    rollSpeed: 5,
     swingAmplitude: 2.9,
-    swingPeriod: 2.4,
+    swingPeriod: 3,
   },
   loop: { fixedStep: 1 / 60, maxStepsPerFrame: 5 },
   camera: {

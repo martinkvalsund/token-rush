@@ -289,6 +289,21 @@ export class UI {
     this.countdownEl.appendChild(h('div', 'n', n === 0 ? 'GO!' : String(n)));
   }
 
+  private readonly warnTimers = [0, 0, 0];
+
+  /** Flash a lane arrow for an incoming moving hazard (lane 0 left, 1 centre, 2 right). */
+  warn(lane: number, seconds = 1.4): void {
+    const el = [this.warnLeft, this.warnCenter, this.warnRight][lane];
+    if (!el) return;
+    el.classList.add('on');
+    window.clearTimeout(this.warnTimers[lane]);
+    this.warnTimers[lane] = window.setTimeout(() => el.classList.remove('on'), seconds * 1000);
+  }
+
+  clearWarnings(): void {
+    for (const el of [this.warnLeft, this.warnCenter, this.warnRight]) el.classList.remove('on');
+  }
+
   toast(text: string, seconds = 1.6): void {
     this.toastEl.textContent = text;
     this.toastEl.classList.add('on');

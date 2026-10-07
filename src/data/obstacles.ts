@@ -85,7 +85,7 @@ export const OBSTACLES = [
   k('sweep_arm', 'moving', 2.2, 1.2, 1.0, { move: 'sweep', severity: 'stumble', bottom: 0.4 }),
   // ramps and platforms
   k('ramp', 'ramp', 2.2, 2.6, 4.0),
-  k('container_platform', 'platform', 2.3, 2.6, 4.0, { model: 'container' }),
+  k('container_platform', 'platform', 2.3, 2.6, 4.0),
 ] as const satisfies readonly ObstacleKind[];
 
 export type ObstacleId = (typeof OBSTACLES)[number]['id'];

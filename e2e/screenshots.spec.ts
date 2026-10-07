@@ -7,6 +7,7 @@ type G = {
     god: boolean;
     distance: number;
     activate: (t: string) => void;
+    generator: { addObstacle: (id: string, lane: number, at: number, zone: number) => void };
   };
 };
 async function shot(page: Page, name: string) {
@@ -35,6 +36,17 @@ test('capture screenshots', async ({ page }) => {
   await page.evaluate(() => (window as unknown as { __game: G }).__game.sim.activate('jetpack'));
   await page.waitForTimeout(2000);
   await shot(page, 'jetpack');
+  await page.evaluate(() => {
+    const sim = (window as unknown as { __game: G }).__game.sim;
+    sim.generator.addObstacle('oncoming_truck', 0, sim.distance + 70, 0);
+    sim.generator.addObstacle('ramp', 1, sim.distance + 40, 0);
+    for (const k of [44, 48, 52, 56])
+      sim.generator.addObstacle('container_platform', 1, sim.distance + k, 0);
+  });
+  await page.waitForTimeout(1300);
+  await shot(page, 'oncoming');
+  await page.waitForTimeout(900);
+  await shot(page, 'rooftop');
   for (let z = 1; z <= 4; z++) {
     await page.evaluate(() => (window as unknown as { __game: G }).__game.skipToNextZone());
     await page.waitForTimeout(3500);
