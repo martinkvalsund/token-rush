@@ -93,6 +93,7 @@ export class Game {
     this.renderer.info.autoReset = false;
     this.debug = new DebugOverlay(this.renderer, params.get('debug') === '1');
     if (params.get('debug') === '1') this.debugKeys();
+    this.konami();
 
     this.ui.onAction((a) => {
       this.sfx.click();
@@ -203,6 +204,36 @@ export class Game {
   private applyAudioSettings(): void {
     const s = this.storage.data.settings;
     this.audio.setVolumes(s.masterVolume, s.musicVolume, s.sfxVolume, s.muted);
+  }
+
+  /** Easter egg: the Konami code on the menu. */
+  private konami(): void {
+    const seq = [
+      'ArrowUp',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowLeft',
+      'ArrowRight',
+      'KeyB',
+      'KeyA',
+    ];
+    let i = 0;
+    window.addEventListener('keydown', (e) => {
+      if (this.machine.state !== 'Menu') {
+        i = 0;
+        return;
+      }
+      i = e.code === seq[i] ? i + 1 : e.code === seq[0] ? 1 : 0;
+      if (i === seq.length) {
+        i = 0;
+        this.ui.toast('Achievement unlocked: Senior Developer 🦆', 3);
+        this.sfx.fanfare();
+        this.ui.confetti();
+      }
+    });
   }
 
   private autoPause(): void {

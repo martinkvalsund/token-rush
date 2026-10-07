@@ -14,6 +14,10 @@ export default tseslint.config(
     },
   },
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
+  },
+  {
     files: ['src/sim/**/*.ts'],
     rules: {
       'no-restricted-imports': [

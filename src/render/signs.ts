@@ -56,6 +56,8 @@ export function signMaterial(
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
+  // glTF UVs have V pointing down; match that instead of WebGL's default flip.
+  tex.flipY = false;
   const mat = new THREE.MeshStandardMaterial({
     map: tex,
     emissiveMap: tex,

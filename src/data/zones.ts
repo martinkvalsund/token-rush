@@ -51,6 +51,7 @@ export const ZONES: readonly ZoneDef[] = [
       { model: 'cone', chance: 0.35, minX: 4.3, maxX: 5 },
       { model: 'excavator', chance: 0.05, minX: 9, maxX: 14 },
       { model: 'billboard', chance: 0.04, minX: 10, maxX: 12 },
+      { model: 'rubber_duck', chance: 0.006, minX: 6, maxX: 7, scale: 1.5 },
     ],
     look: {
       skyTop: 0x4a90d9,
@@ -118,6 +119,7 @@ export const ZONES: readonly ZoneDef[] = [
       { model: 'scaffold_wall', chance: 0.12, minX: 7, maxX: 8 },
       { model: 'site_cabin', chance: 0.06, minX: 7, maxX: 10 },
       { model: 'brick_pallet', chance: 0.12, minX: 5, maxX: 6.5 },
+      { model: 'rubber_duck', chance: 0.006, minX: 6, maxX: 8, scale: 1.5 },
       { model: 'billboard', chance: 0.04, minX: 10, maxX: 12 },
     ],
     look: {

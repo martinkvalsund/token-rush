@@ -45,6 +45,7 @@ export function conflictTexture(): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
+  tex.flipY = false; // glTF UV convention (the Blender boulder model)
   return tex;
 }
 
