@@ -5,8 +5,8 @@ test('game loads, runs and renders without console errors', async ({ page }) => 
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/?debug=1&seed=1');
-  await page.waitForTimeout(3000);
-  await page.screenshot({ path: 'screenshots/phase1-run.png' });
+  await page.waitForTimeout(5000);
+  await page.screenshot({ path: 'screenshots/smoke.png' });
   expect(errors).toEqual([]);
   const nonBlank = await page.evaluate(() => {
     const c = document.querySelector<HTMLCanvasElement>('#game');
