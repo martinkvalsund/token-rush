@@ -49,7 +49,8 @@ canvas#game {
 
 /* ---------- Menu ---------- */
 .menu {
-  place-items: center;
+  place-items: center end;
+  padding-right: max(6vw, 24px);
   background: linear-gradient(180deg, rgba(10, 14, 20, 0.05), rgba(10, 14, 20, 0.65));
 }
 .menu .stack {
@@ -445,4 +446,64 @@ canvas#game {
 .pu .icon svg {
   width: 32px;
   height: 32px;
+}
+.fps {
+  position: fixed;
+  right: 10px;
+  bottom: 8px;
+  font: 600 12px var(--body);
+  color: var(--muted);
+  display: none;
+}
+.popup {
+  position: absolute;
+  top: 52%;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 26px;
+  color: var(--yellow);
+  opacity: 0;
+  pointer-events: none;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.popup.go {
+  animation: rise 0.7s ease-out;
+}
+@keyframes rise {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(1.15);
+  }
+}
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+.confetti i {
+  position: absolute;
+  top: -20px;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation: fall linear forwards;
+}
+@keyframes fall {
+  to {
+    top: 105%;
+    transform: rotate(720deg) translateX(40px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confetti,
+  .popup.go {
+    animation: none;
+    display: none;
+  }
 }

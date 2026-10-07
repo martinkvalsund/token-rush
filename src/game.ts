@@ -13,6 +13,11 @@ import { ModelLibrary } from './render/models/library';
 import { MODEL_NAMES } from './render/models/manifest';
 import { paletteMaterial } from './render/palette';
 import { View } from './render/view';
+import { Post } from './render/post';
+import { AdaptiveQuality, type Level } from './render/quality';
+import { installGestures } from './core/gestures';
+import { buildSettings } from './ui/settings';
+import { buildHelp } from './ui/help';
 import type { Pose } from './render/character';
 import { DebugOverlay } from './ui/debugOverlay';
 import { UI, type UiAction } from './ui/ui';
@@ -37,6 +42,12 @@ export class Game {
   private readonly params: URLSearchParams;
   private readonly library = new ModelLibrary(() => paletteMaterial());
   private view: View | null = null;
+  private post: Post | null = null;
+  private readonly quality = new AdaptiveQuality((l) => this.applyQuality(l));
+  private fpsAcc = 0;
+  private fpsFrames = 0;
+  private popupTokens = 0;
+  private popupTimer = 0;
   private readonly input = new Input();
   private readonly loop: FixedLoop;
   private readonly debug: DebugOverlay;
@@ -83,6 +94,30 @@ export class Game {
     });
     this.ui.setSave(this.storage.data);
     this.applyAudioSettings();
+    this.ui.addScreen(
+      'settings',
+      buildSettings(
+        this.storage.data.settings,
+        () => this.onSettingsChanged(),
+        () => {
+          this.storage.reset();
+          this.ui.setSave(this.storage.data);
+        },
+        () => this.onUi('back'),
+      ),
+    );
+    this.ui.addScreen(
+      'help',
+      buildHelp(() => this.onUi('back')),
+    );
+    installGestures(
+      canvas,
+      (cmd) => this.onCommand(cmd),
+      () => ({
+        trackpad: this.storage.data.settings.controls === 'trackpad',
+        sensitivity: this.storage.data.settings.swipeSensitivity,
+      }),
+    );
     this.input.onCommand((cmd) => this.onCommand(cmd));
     this.machine.onChange((next, prev) => this.onState(next, prev));
     this.loop = new FixedLoop(
@@ -102,6 +137,8 @@ export class Game {
   async start(): Promise<void> {
     await this.library.loadAll(MODEL_NAMES);
     this.view = new View(this.library);
+    this.post = new Post(this.renderer, this.view.scene, this.view.rig.camera);
+    this.onSettingsChanged();
     this.resize();
     this.machine.go('Menu');
     this.loop.start();
@@ -137,6 +174,26 @@ export class Game {
     this.prevDistance = sim.distance;
   }
 
+  private onSettingsChanged(): void {
+    const s = this.storage.data.settings;
+    this.storage.save();
+    this.applyAudioSettings();
+    this.quality.setMode(s.quality);
+    this.view?.setReduceMotion(s.reduceMotion);
+    if (!s.showFps) this.ui.setFps(null);
+  }
+
+  private applyQuality(level: Level): void {
+    const dpr = window.devicePixelRatio || 1;
+    this.renderer.setPixelRatio(
+      level === 'high' ? Math.min(dpr, 2) : level === 'medium' ? Math.min(dpr, 1.5) : 1,
+    );
+    this.renderer.shadowMap.enabled = level !== 'low';
+    if (this.post) this.post.enabled = level !== 'low';
+    this.view?.applyQuality(level);
+    this.resize();
+  }
+
   private applyAudioSettings(): void {
     const s = this.storage.data.settings;
     this.audio.setVolumes(s.masterVolume, s.musicVolume, s.sfxVolume, s.muted);
@@ -150,6 +207,7 @@ export class Game {
   private onState(next: GameState, prev: GameState): void {
     this.loop.paused = next === 'Paused';
     this.music.intensity = next === 'Playing' || next === 'Countdown' ? 1 : 0;
+    if (this.view) this.view.rig.menu = next === 'Menu';
     this.audio.muffle(next === 'Crashing' || next === 'GameOver' || next === 'Paused');
     switch (next) {
       case 'Menu':
@@ -174,7 +232,10 @@ export class Game {
       case 'GameOver': {
         const s = this.sim;
         const newBest = this.storage.recordRun(s.score, s.distance, s.tokens);
-        if (newBest) this.sfx.fanfare();
+        if (newBest && s.score > 0) {
+          this.sfx.fanfare();
+          if (!this.storage.data.settings.reduceMotion) this.ui.confetti();
+        }
         this.ui.showGameOver({
           score: s.score,
           distance: s.distance,
@@ -214,7 +275,7 @@ export class Game {
       case 'settings':
       case 'help':
         this.settingsReturn = state;
-        this.ui.toast('Coming soon');
+        this.ui.show(a);
         break;
       case 'back':
         this.ui.show(this.settingsReturn === 'Paused' ? 'pause' : 'menu');
@@ -292,8 +353,11 @@ export class Game {
     for (let i = 0; i < ev.count; i++) {
       const e = ev.get(i);
       if (!e) continue;
-      if (e.type === 'token') this.sfx.token(e.value);
-      else if (e.type === 'jump') this.sfx.jump(e.value === 1);
+      view.onEvent(e, this.sim);
+      if (e.type === 'token') {
+        this.sfx.token(e.value);
+        this.popupTokens++;
+      } else if (e.type === 'jump') this.sfx.jump(e.value === 1);
       else if (e.type === 'land') this.sfx.land();
       else if (e.type === 'slide') this.sfx.slide();
       else if (e.type === 'lane') this.sfx.lane();
@@ -366,7 +430,26 @@ export class Game {
       dt,
       showChaser: state !== 'Menu',
     });
-    this.renderer.render(view.scene, view.rig.camera);
+    this.post?.render(view.scene, view.rig.camera);
+    this.quality.sample(
+      frameDt,
+      this.storage.data.settings.quality === 'auto' && state === 'Playing',
+    );
+    this.popupTimer -= frameDt;
+    if (this.popupTokens > 0 && this.popupTimer <= 0) {
+      this.ui.popup(`+${this.popupTokens * TUNING.tokens.score * sim.multiplier}`);
+      this.popupTokens = 0;
+      this.popupTimer = 0.25;
+    }
+    if (this.storage.data.settings.showFps) {
+      this.fpsAcc += frameDt;
+      this.fpsFrames++;
+      if (this.fpsAcc > 0.5) {
+        this.ui.setFps(this.fpsFrames / this.fpsAcc);
+        this.fpsAcc = 0;
+        this.fpsFrames = 0;
+      }
+    }
     const active = state === 'Playing';
     const L = TUNING.lives;
     this.sfx.loops(
@@ -405,5 +488,6 @@ export class Game {
   private resize(): void {
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.view?.rig.resize(window.innerWidth, window.innerHeight);
+    this.post?.setSize(window.innerWidth, window.innerHeight);
   }
 }
