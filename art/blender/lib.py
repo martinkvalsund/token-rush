@@ -22,6 +22,10 @@ PALETTE = json.load(open(os.path.join(ROOT, "art", "palette.json")))
 GRID = PALETTE["size"]
 COLOR_INDEX = {c["name"]: i for i, c in enumerate(PALETTE["colors"])}
 COLLECTION = "TokenRushAssets"
+# Quality knobs: chamfer size on box edges (m), round-part detail multiplier, crease angle.
+BEVEL = 0.03
+DETAIL = 1.6
+SMOOTH_ANGLE = 50
 
 
 def hex_to_rgb(h):
@@ -54,8 +58,23 @@ class Part:
         """Box of size (x, y, z) centred at loc."""
         r = bmesh.ops.create_cube(self.bm, size=1.0)
         self._xform(r["verts"], mat4(loc, rot, size))
-        self._paint(r["verts"], color)
-        return r["verts"]
+        verts = r["verts"]
+        self._paint(verts, color)
+        # Chamfer every edge so boxes catch highlights like hand-made game props.
+        offset = min(BEVEL, 0.2 * min(abs(d) for d in size))
+        if offset > 0.004:
+            faces = list({f for v in verts for f in v.link_faces})
+            edges = list({e for f in faces for e in f.edges})
+            res = bmesh.ops.bevel(
+                self.bm, geom=edges, offset=offset, offset_type="OFFSET",
+                segments=1, profile=0.5, affect="EDGES", clamp_overlap=True,
+            )
+            # Bevel rebuilds the box's faces too, so recolour everything now attached to it.
+            idx = COLOR_INDEX[color]
+            verts = list({v for f in res["faces"] for v in f.verts})
+            for f in {f for v in verts for f in v.link_faces}:
+                f[self.col] = idx
+        return verts
 
     def block(self, x0, x1, y0, y1, z0, z1, color="grey"):
         """Axis-aligned box from min/max coordinates."""
@@ -63,6 +82,7 @@ class Part:
 
     def cyl(self, r, depth, loc=(0, 0, 0), color="grey", rot=(0, 0, 0), segs=12, r2=None, caps=True):
         """Cylinder (or cone with r2) along local Z, centred at loc."""
+        segs = max(segs, int(round(segs * DETAIL)))
         res = bmesh.ops.create_cone(
             self.bm, cap_ends=caps, cap_tris=False, segments=segs, radius1=r,
             radius2=r if r2 is None else r2, depth=depth,
@@ -72,12 +92,14 @@ class Part:
         return res["verts"]
 
     def sphere(self, r, loc=(0, 0, 0), color="grey", scale=(1, 1, 1), subdiv=1, rot=(0, 0, 0)):
-        res = bmesh.ops.create_icosphere(self.bm, subdivisions=subdiv, radius=r)
+        res = bmesh.ops.create_icosphere(self.bm, subdivisions=max(subdiv, 2), radius=r)
         self._xform(res["verts"], mat4(loc, rot, scale))
         self._paint(res["verts"], color)
         return res["verts"]
 
     def uvsphere(self, r, loc=(0, 0, 0), color="grey", scale=(1, 1, 1), segs=12, rings=6, rot=(0, 0, 0)):
+        segs = int(round(segs * DETAIL))
+        rings = int(round(rings * DETAIL))
         res = bmesh.ops.create_uvsphere(self.bm, u_segments=segs, v_segments=rings, radius=r)
         self._xform(res["verts"], mat4(loc, rot, scale))
         self._paint(res["verts"], color)
@@ -155,11 +177,17 @@ class Part:
         mesh = bpy.data.meshes.new(self.name)
         bm.to_mesh(mesh)
         bm.free()
+        # Smooth shading with sharp creases: chamfers and round parts shade softly, hard
+        # corners stay crisp, and big flat faces stay flat (weighted normals).
         for p in mesh.polygons:
-            p.use_smooth = False
+            p.use_smooth = True
+        mesh.set_sharp_from_angle(angle=math.radians(SMOOTH_ANGLE))
         mesh.materials.append(palette_material())
         obj = bpy.data.objects.new(self.name, mesh)
         collection().objects.link(obj)
+        wn = obj.modifiers.new("WeightedNormal", "WEIGHTED_NORMAL")
+        wn.mode = "FACE_AREA"
+        wn.keep_sharp = True
         obj.location = loc
         if parent is not None:
             obj.parent = parent

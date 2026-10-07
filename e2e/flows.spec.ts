@@ -96,7 +96,7 @@ test('trackpad scheme: a one-finger flick changes lane without clicking', async 
     (window as unknown as { __game: { sim: { god: boolean } } }).__game.sim.god = true;
   });
   await page.waitForTimeout(300);
-  await page.mouse.move(900, 360, { steps: 6 }); // quick flick right, no button pressed
+  await page.mouse.move(900, 360, { steps: 2 }); // quick flick right, no button pressed
   await page.waitForTimeout(400);
   const lane = await page.evaluate(
     () =>
