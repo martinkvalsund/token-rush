@@ -16,7 +16,8 @@ import bmesh
 import bpy
 from mathutils import Euler, Matrix, Vector
 
-ROOT = os.environ.get("TOKEN_RUSH_ROOT", "/Users/martinkvalsund/Documents/code/skanska/techlab/blender")
+# build.py sets TOKEN_RUSH_ROOT before exec'ing this file (or use the environment variable).
+ROOT = globals().get("TOKEN_RUSH_ROOT") or os.environ["TOKEN_RUSH_ROOT"]
 PALETTE = json.load(open(os.path.join(ROOT, "art", "palette.json")))
 GRID = PALETTE["size"]
 COLOR_INDEX = {c["name"]: i for i, c in enumerate(PALETTE["colors"])}
