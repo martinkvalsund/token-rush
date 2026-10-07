@@ -5,8 +5,7 @@ type G = {
   sim: {
     god: boolean;
     distance: number;
-    step: (dt: number) => void;
-    events: { clear: () => void };
+    activate: (t: string) => void;
   };
 };
 async function shot(page: Page, name: string) {
