@@ -2,7 +2,7 @@
 
 - [x] Phase 0 — Scaffold
 - [x] Phase 1 — Core engine
-- [ ] Phase 2 — Player controller
+- [x] Phase 2 — Player controller
 - [ ] Phase 3 — World generation
 - [ ] Phase 4 — Obstacles, collisions, lives, chaser
 - [ ] Phase 5 — Tokens, scoring, HUD, persistence

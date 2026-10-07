@@ -1,4 +1,4 @@
-export type Command = 'left' | 'right' | 'jump' | 'slide' | 'pause';
+export type Command = 'left' | 'right' | 'jump' | 'slide' | 'pause' | 'mute' | 'confirm';
 
 const KEYMAP: Record<string, Command> = {
   KeyA: 'left',
@@ -12,31 +12,35 @@ const KEYMAP: Record<string, Command> = {
   ArrowDown: 'slide',
   Escape: 'pause',
   KeyP: 'pause',
+  KeyM: 'mute',
+  Enter: 'confirm',
 };
 
-/** Collects commands with timestamps; the sim drains them each tick (supports input buffering). */
+/**
+ * Turns keyboard events into commands and hands them to a listener immediately.
+ * Buffering lives in the sim (it knows when a command becomes legal).
+ */
 export class Input {
-  private queue: Array<{ cmd: Command; time: number }> = [];
+  private listener: (cmd: Command, source: 'key' | 'swipe') => void = () => undefined;
 
   constructor(target: Window = window) {
     target.addEventListener('keydown', (e) => {
-      if (e.repeat) return;
+      if (e.repeat || e.metaKey || e.ctrlKey) return;
       const cmd = KEYMAP[e.code];
       if (!cmd) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT') return;
       e.preventDefault();
-      this.push(cmd);
+      this.listener(cmd, 'key');
     });
   }
 
-  push(cmd: Command): void {
-    this.queue.push({ cmd, time: performance.now() });
+  onCommand(fn: (cmd: Command, source: 'key' | 'swipe') => void): void {
+    this.listener = fn;
   }
 
-  /** Remove and return commands younger than maxAgeMs; older ones are dropped. */
-  drain(maxAgeMs = 120): Command[] {
-    const now = performance.now();
-    const out = this.queue.filter((q) => now - q.time <= maxAgeMs).map((q) => q.cmd);
-    this.queue.length = 0;
-    return out;
+  /** Used by gesture recognisers and the bot. */
+  emit(cmd: Command, source: 'key' | 'swipe' = 'swipe'): void {
+    this.listener(cmd, source);
   }
 }
