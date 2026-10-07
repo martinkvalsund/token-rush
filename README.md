@@ -48,7 +48,7 @@ Trackpad play needs no clicking, like swiping on a phone: in the Trackpad scheme
   - Ramps: lead onto container rooftops.
 - **Lives the original way:** a stumble greys out a hard hat and brings the Tech Debt boulder into view. Stumble again before it falls back and it catches you. Hitting a vehicle head-on ends the run.
 - **Power-ups:** Laptop (token magnet), Energy drink (jetpack), Coffee (shield), AI spark (×2 score), Safety boots (super jump), Mystery box.
-- **Difficulty:** reaches maximum after about 2 minutes. A typical non-perfect run lasts 1.5–3 minutes.
+- **Difficulty:** ramps up quickly, reaching the top tier and near top speed after about a minute. A typical non-perfect run lasts around 1–3 minutes.
 - **Saved locally:** highscore, best distance, total tokens ("enough tokens for N prompts") and all settings.
 
 ## Development

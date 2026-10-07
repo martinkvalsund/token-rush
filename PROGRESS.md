@@ -17,4 +17,4 @@
 
 ## Known issues
 
-- **Soak residual (Phase 11):** the perfect autoplay bot survives 23 of 24 four-minute seeded runs (`npm run soak`). Seed 114 dies at about 4 km (tier 8) on two stacked overhead bars right after a `boo` row. At some speeds one long slide covers both bars; at others it does not. The generator samples six speeds per tier and misses this one. The CI bot test (6 seeds × 3 min) has zero deaths.
+- **Soak residual (Phase 11):** the perfect autoplay bot survives 23 of 24 four-minute seeded runs (`npm run soak`). After the faster difficulty ramp, the one death is seed 104 at about 6.3 km (top tier). It comes from tight speed-dependent timing edge cases between pattern joins. The CI bot test (6 seeds × 3 min) has zero deaths.

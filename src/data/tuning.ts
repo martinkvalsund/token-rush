@@ -9,10 +9,10 @@ export const TUNING = {
     spawnDistance: 90,
     despawnBehind: 12,
     zoneLength: 600,
-    tierLength: 300,
+    tierLength: 180,
     maxTier: 8,
   },
-  speed: { start: 14, max: 32, timeConstant: 50 },
+  speed: { start: 16, max: 32, timeConstant: 30 },
   player: {
     laneChangeTime: 0.12,
     gravity: 28,
