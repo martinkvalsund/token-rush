@@ -61,4 +61,5 @@ export const MODEL_NAMES = [
   'site_gate',
   'tunnel_portal',
   'skyline',
+  'rubber_duck',
 ] as const;

@@ -12,7 +12,8 @@
 - [x] Phase 9 — Audio
 - [x] Phase 10 — UI, juice, post-processing, settings
 - [x] Phase 11 — Bot, balancing, performance
-- [x] Phase 12 — Polish and release
+- [x] Phase 12 — Polish and release (signage and easter eggs, bug-bash flows, README media)
+- [x] Phase 13 — Blender assets (done as part of Phase 7 at the owner's request)
 
 ## Known issues
 

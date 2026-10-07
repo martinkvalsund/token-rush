@@ -336,6 +336,19 @@ def build_boulder():
     return obj
 
 
+def build_rubber_duck():
+    """Easter egg: a giant rubber debugging duck on a pallet."""
+    p = Part("rubber_duck")
+    p.box((1.6, 1.6, 0.15), (0, 0, 0.075), "wood")
+    p.sphere(0.75, (0, 0.1, 0.85), "yellow", scale=(1.0, 1.25, 0.8), subdiv=2)
+    p.sphere(0.48, (0, -0.45, 1.55), "yellow", subdiv=2)
+    p.prism([(-0.22, 0), (0.22, 0), (0.15, 0.12), (-0.15, 0.12)], 0.3, (0, -0.95, 1.45), "orange", rot=(0, 0, 0))
+    for x in (-0.18, 0.18):
+        p.sphere(0.07, (x, -0.86, 1.68), "black", subdiv=1)
+    p.box((0.5, 0.2, 0.3), (0, 0.75, 1.05), "yellow_dark", rot=(-30, 0, 0))
+    return p.finish()
+
+
 def empty_root(name):
     obj = bpy.data.objects.new(name, None)
     collection().objects.link(obj)
@@ -360,4 +373,5 @@ SCENERY = {
     "tunnel_portal": build_tunnel_portal,
     "skyline": build_skyline,
     "boulder": build_boulder,
+    "rubber_duck": build_rubber_duck,
 }
