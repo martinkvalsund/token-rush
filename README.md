@@ -26,15 +26,15 @@ Targets current Chrome and Safari on macOS (tested automatically with Playwright
 
 ## Controls
 
-| Action | Keys (default) | Arrows | Trackpad (enable in Settings) |
+| Action | Keys (default) | Arrows | Trackpad flick (Settings → Trackpad) |
 |---|---|---|---|
-| Lane left / right | A / D | ← / → | two-finger swipe left / right |
-| Jump | W or Space | ↑ | swipe up |
-| Slide (in the air: fast-fall) | S | ↓ | swipe down |
-| Pause | Esc or P | Esc or P | |
+| Lane left / right | A / D | ← / → | flick one finger left / right |
+| Jump | W or Space | ↑ | flick up |
+| Slide (in the air: fast-fall) | S | ↓ | flick down |
+| Pause | Esc or P | Esc or P | Esc (also gives the cursor back) |
 | Mute | M | M | |
 
-Pointer/touch drag swipes also work. You can tune swipe sensitivity in Settings.
+Trackpad play needs no clicking, like swiping on a phone: in the Trackpad scheme the game captures the pointer during a run and reads quick one-finger flicks. Two-finger swipes work in every scheme, and touchscreen swipes work too. Tune sensitivity in Settings.
 
 ## What's in the game
 

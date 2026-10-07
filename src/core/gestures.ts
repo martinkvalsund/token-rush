@@ -52,7 +52,54 @@ export class WheelSwipe {
   }
 }
 
-/** Pointer/touch drag swipes: one command per drag once it passes a pixel threshold. */
+/**
+ * One-finger trackpad flicks without clicking: fast pointer movement (pointer-locked while
+ * playing, so the cursor never hits the screen edge). Movement fades out quickly, so slow
+ * drifting never fires; after firing, the finger has to pause before the next flick.
+ */
+export class FlickSwipe {
+  private ax = 0;
+  private ay = 0;
+  private last = 0;
+  private armed = true;
+  private lockedUntil = 0;
+  sensitivity = 1;
+
+  feed(dx: number, dy: number, timeMs: number): Command | null {
+    const gap = Math.max(0, timeMs - this.last);
+    this.last = timeMs;
+    const decay = Math.exp(-gap / G.flickWindowMs);
+    this.ax = this.ax * decay + dx;
+    this.ay = this.ay * decay + dy;
+    if (!this.armed) {
+      // Re-arm once the finger has (nearly) stopped.
+      const speed = Math.hypot(dx, dy) / Math.max(gap, 1);
+      if (timeMs >= this.lockedUntil && (speed < 0.25 || gap > 100)) {
+        this.armed = true;
+        this.ax = dx;
+        this.ay = dy;
+      }
+      return null;
+    }
+    const threshold = G.flickThreshold / this.sensitivity;
+    if (Math.abs(this.ax) < threshold && Math.abs(this.ay) < threshold) return null;
+    const cmd: Command =
+      Math.abs(this.ax) > Math.abs(this.ay)
+        ? this.ax > 0
+          ? 'right'
+          : 'left'
+        : this.ay > 0
+          ? 'slide'
+          : 'jump';
+    this.ax = 0;
+    this.ay = 0;
+    this.armed = false;
+    this.lockedUntil = timeMs + G.swipeLockMs;
+    return cmd;
+  }
+}
+
+/** Touchscreen drag swipes: one command per drag once it passes a pixel threshold. */
 export class PointerSwipe {
   private start: { x: number; y: number } | null = null;
   private fired = false;
@@ -79,35 +126,62 @@ export class PointerSwipe {
   }
 }
 
-/** Wire the recognisers to the DOM. Wheel swipes only fire when the trackpad scheme is on. */
+/**
+ * Wire the recognisers to the DOM.
+ * - Two-finger trackpad swipes (wheel events) always work.
+ * - One-finger flicks (no click) work in the trackpad scheme while `flicking()` is true.
+ * - Touchscreen drags work everywhere; mouse/trackpad drags with a click are ignored.
+ */
 export function installGestures(
   target: HTMLElement,
   emit: (cmd: Command) => void,
-  enabled: () => { trackpad: boolean; sensitivity: number },
+  config: () => { trackpad: boolean; sensitivity: number; flicking: boolean },
 ): void {
   const wheel = new WheelSwipe();
-  const pointer = new PointerSwipe();
+  const flick = new FlickSwipe();
+  const touch = new PointerSwipe();
   window.addEventListener(
     'wheel',
     (e) => {
       e.preventDefault(); // stop macOS history swipes and page scroll
-      const cfg = enabled();
-      if (!cfg.trackpad) return;
-      wheel.sensitivity = cfg.sensitivity;
+      wheel.sensitivity = config().sensitivity;
       const scale = e.deltaMode === 1 ? 16 : 1;
       const cmd = wheel.feed(e.deltaX * scale, e.deltaY * scale, e.timeStamp);
       if (cmd) emit(cmd);
     },
     { passive: false },
   );
-  target.addEventListener('pointerdown', (e) => {
-    pointer.sensitivity = enabled().sensitivity;
-    pointer.down(e.clientX, e.clientY);
-  });
-  target.addEventListener('pointermove', (e) => {
-    const cmd = pointer.move(e.clientX, e.clientY);
+  window.addEventListener('pointermove', (e) => {
+    if (e.pointerType === 'touch') {
+      const cmd = touch.move(e.clientX, e.clientY);
+      if (cmd) emit(cmd);
+      return;
+    }
+    const cfg = config();
+    if (!cfg.trackpad || !cfg.flicking) return;
+    flick.sensitivity = cfg.sensitivity;
+    const cmd = flick.feed(e.movementX, e.movementY, e.timeStamp);
     if (cmd) emit(cmd);
   });
-  for (const ev of ['pointerup', 'pointercancel', 'pointerleave'] as const)
-    target.addEventListener(ev, () => pointer.up());
+  target.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch') return;
+    touch.sensitivity = config().sensitivity;
+    touch.down(e.clientX, e.clientY);
+  });
+  for (const ev of ['pointerup', 'pointercancel'] as const)
+    target.addEventListener(ev, () => touch.up());
+}
+
+/** Capture the pointer while playing with the trackpad scheme (hides the cursor, no edges). */
+export function setPointerCapture(target: HTMLElement, on: boolean): void {
+  try {
+    if (on && document.pointerLockElement !== target) {
+      const r = target.requestPointerLock() as unknown;
+      if (r instanceof Promise) r.catch(() => undefined);
+    } else if (!on && document.pointerLockElement) {
+      document.exitPointerLock();
+    }
+  } catch {
+    // Pointer lock unavailable: flicks still work from plain cursor movement.
+  }
 }

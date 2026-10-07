@@ -99,6 +99,10 @@ export const TUNING = {
     swipeThreshold: 40,
     swipeLockMs: 250,
     swipeDecay: 4,
+    /** One-finger trackpad flick (pointer movement, no click): pixels within ~0.1 s. */
+    flickThreshold: 70,
+    /** Accumulated flick movement fades with this time constant (ms), so slow drift never fires. */
+    flickWindowMs: 90,
     pointerSwipePx: 30,
   },
 } as const;

@@ -15,7 +15,7 @@ import { paletteMaterial } from './render/palette';
 import { View } from './render/view';
 import { Post } from './render/post';
 import { AdaptiveQuality, type Level } from './render/quality';
-import { installGestures } from './core/gestures';
+import { installGestures, setPointerCapture } from './core/gestures';
 import { Bot, PERFECT } from './sim/bot';
 import { buildSettings } from './ui/settings';
 import { buildHelp } from './ui/help';
@@ -43,6 +43,8 @@ export class Game {
   private readonly params: URLSearchParams;
   private readonly library = new ModelLibrary(() => paletteMaterial());
   private view: View | null = null;
+  private canvas!: HTMLCanvasElement;
+  private lockPausedAt = -1e9;
   /** Autoplay (?bot=1): plays the game for demos, soak tests and screenshots. */
   private readonly bot: Bot | null;
   private post: Post | null = null;
@@ -123,8 +125,18 @@ export class Game {
       () => ({
         trackpad: this.storage.data.settings.controls === 'trackpad',
         sensitivity: this.storage.data.settings.swipeSensitivity,
+        flicking: this.machine.state === 'Playing',
       }),
     );
+    // Losing the pointer capture mid-run (Esc releases it in the browser) pauses the game.
+    document.addEventListener('pointerlockchange', () => {
+      const s = this.machine.state;
+      if (!document.pointerLockElement && (s === 'Playing' || s === 'Countdown')) {
+        this.lockPausedAt = performance.now();
+        this.machine.go('Paused');
+      }
+    });
+    this.canvas = canvas;
     this.input.onCommand((cmd) => this.onCommand(cmd));
     this.machine.onChange((next, prev) => this.onState(next, prev));
     this.loop = new FixedLoop(
@@ -243,6 +255,9 @@ export class Game {
 
   private onState(next: GameState, prev: GameState): void {
     this.loop.paused = next === 'Paused';
+    // Trackpad scheme: capture the pointer during runs so one-finger flicks need no click.
+    const running = next === 'Playing' || next === 'Countdown';
+    setPointerCapture(this.canvas, running && this.storage.data.settings.controls === 'trackpad');
     this.music.intensity = next === 'Playing' || next === 'Countdown' ? 1 : 0;
     if (this.view) this.view.rig.menu = next === 'Menu';
     this.audio.muffle(next === 'Crashing' || next === 'GameOver' || next === 'Paused');
@@ -331,6 +346,8 @@ export class Game {
       return;
     }
     if (cmd === 'pause') {
+      // The Esc that released the pointer already paused; don't let it also resume.
+      if (performance.now() - this.lockPausedAt < 400) return;
       if (state === 'Playing' || state === 'Countdown') this.machine.go('Paused');
       else if (state === 'Paused') this.machine.go('Playing');
       else if (state === 'GameOver') this.machine.go('Menu');
