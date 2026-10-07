@@ -1,6 +1,17 @@
 import { COMPANY_NAME, GAME_TITLE, TUNING } from '../data/tuning';
 import type { SaveData } from '../core/storage';
-import { ICON_HAT, ICON_TOKEN, POWERUP_COLORS, POWERUP_ICONS, POWERUP_NAMES } from './icons';
+import {
+  ICON_GEAR,
+  ICON_HAT,
+  ICON_HELP,
+  ICON_PAUSE,
+  ICON_PLAY,
+  ICON_STATS,
+  ICON_TOKEN,
+  POWERUP_COLORS,
+  POWERUP_ICONS,
+  POWERUP_NAMES,
+} from './icons';
 import type { TimedPowerup } from '../sim/powerups';
 
 export type UiAction =
@@ -117,16 +128,31 @@ export class UI {
     const s = h('div', 'menu');
     const stack = h('div', 'stack');
     const words = GAME_TITLE.split(' ');
+    const brand = h('div', 'brand');
+    brand.append(
+      h('div', 'logo-badge', ICON_TOKEN),
+      h('h1', 'title', `${words[0] ?? ''}<span>${words.slice(1).join(' ')}</span>`),
+    );
+    const play = this.button(`${ICON_PLAY}<span>Play</span>`, 'play');
+    play.classList.add('play');
+    const grid = h('div', 'menu-grid');
+    grid.append(
+      this.button(`${ICON_HELP}<span>How to play</span>`, 'help', true),
+      this.button(`${ICON_GEAR}<span>Settings</span>`, 'settings', true),
+      this.button(`${ICON_STATS}<span>Stats</span>`, 'stats', true),
+    );
     stack.append(
-      h('h1', 'title', `${words[0] ?? ''}<br><span>${words.slice(1).join(' ')}</span>`),
+      brand,
       h('div', 'hazard'),
       h('p', 'tagline', 'Collect tokens. Dodge tech debt. Ship it.'),
-      this.button('Play', 'play'),
-      this.button('How to play', 'help', true),
-      this.button('Settings', 'settings', true),
-      this.button('Stats', 'stats', true),
+      play,
+      grid,
       this.bestEl,
-      h('div', 'hint', `WASD or arrow keys · Enter to start · A game about ${COMPANY_NAME}`),
+      h(
+        'div',
+        'hint',
+        `<span class="kbd">Enter</span> to start · <span class="kbd">WASD</span> or arrows · a game about ${COMPANY_NAME}`,
+      ),
     );
     s.appendChild(stack);
     this.addScreen('menu', s);
@@ -141,9 +167,15 @@ export class UI {
       this.hats.push(svg);
       hats.appendChild(svg);
     }
-    left.append(this.scoreEl, this.distEl, hats);
+    const scoreCard = h('div', 'card scorecard');
+    const meta = h('div', 'meta');
+    meta.append(this.distEl, hats);
+    scoreCard.append(h('small', 'label', 'Score'), this.scoreEl, meta);
+    left.append(scoreCard);
     const right = h('div', 'right');
-    right.append(this.multEl, h('span', '', ICON_TOKEN), this.tokensEl);
+    const tokenCard = h('div', 'card tokencard');
+    tokenCard.append(h('span', 'token-icon', ICON_TOKEN), this.tokensEl);
+    right.append(this.multEl, tokenCard);
     this.warnLeft.style.left = '30%';
     this.warnCenter.style.left = 'calc(50% - 16px)';
     this.warnRight.style.right = '30%';
@@ -163,6 +195,7 @@ export class UI {
     const s = h('div', 'overlay');
     const p = h('div', 'panel');
     p.append(
+      h('div', 'panel-icon', ICON_PAUSE),
       h('h2', '', 'Paused'),
       h('p', 'msg', 'Coffee break. The boulder waits.'),
       this.button('Resume', 'resume'),
@@ -188,9 +221,15 @@ export class UI {
   }
 
   setSave(save: SaveData): void {
-    this.bestEl.textContent =
+    this.bestEl.innerHTML =
       save.highScore > 0
-        ? `Highscore ${fmt(save.highScore)} · ${fmt(save.totalTokens)} tokens banked`
+        ? [
+            ['Highscore', fmt(save.highScore)],
+            ['Best run', `${fmt(save.bestDistance)} m`],
+            ['Tokens banked', fmt(save.totalTokens)],
+          ]
+            .map(([k, v]) => `<div class="chip"><small>${k}</small><b>${v}</b></div>`)
+            .join('')
         : '';
     this.statsEl.innerHTML = [
       ['Highscore', fmt(save.highScore)],
@@ -207,25 +246,37 @@ export class UI {
     const prompts = Math.floor(r.tokens / TUNING.tokens.promptsPer);
     const p = this.gameOverEl;
     p.innerHTML = '';
-    p.append(h('h2', '', 'Game over'), h('p', 'msg', r.message));
-    if (r.newBest) p.appendChild(h('div', 'newbest', 'New highscore!'));
-    const stats = h('dl', 'stats');
+    p.append(h('div', 'ribbon', 'Run over'), h('h2', '', r.message));
+    if (r.newBest) p.appendChild(h('div', 'newbest', '★ New highscore! ★'));
+    const stats = h('div', 'statcards');
     stats.innerHTML = [
-      ['Score', fmt(r.score)],
-      ['Distance', `${fmt(r.distance)} m`],
-      ['Tokens', fmt(r.tokens)],
-      ['Highscore', fmt(r.highScore)],
+      ['Score', fmt(r.score), r.newBest],
+      ['Distance', `${fmt(r.distance)} m`, false],
+      ['Tokens', fmt(r.tokens), false],
+      ['Best', fmt(r.highScore), false],
     ]
-      .map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`)
+      .map(
+        ([k, v, hi]) =>
+          `<div class="statcard${hi ? ' hi' : ''}"><small>${k}</small><b>${v}</b></div>`,
+      )
       .join('');
     const joke = h(
       'p',
       'joke',
-      `That's enough tokens for ${prompts} prompt${prompts === 1 ? '' : 's'}.`,
+      `${ICON_TOKEN}<span>That's enough tokens for <b>${prompts}</b> prompt${prompts === 1 ? '' : 's'}.</span>`,
     );
     const row = h('div', 'row');
     row.append(this.button('Play again', 'retry'), this.button('Menu', 'menu', true));
-    p.append(stats, joke, row, h('div', 'hint', 'Enter or Space to play again'));
+    p.append(
+      stats,
+      joke,
+      row,
+      h(
+        'div',
+        'hint',
+        '<span class="kbd">Enter</span> or <span class="kbd">Space</span> to play again',
+      ),
+    );
     this.show('gameover');
   }
 
@@ -280,6 +331,31 @@ export class UI {
       slot.ring.style.strokeDashoffset = String(2 * Math.PI * 25 * (1 - f));
       slot.el.style.opacity = blink[t] && Math.floor(performance.now() / 120) % 2 ? '0.35' : '1';
     }
+  }
+
+  private loadingEl: HTMLElement | null = null;
+
+  /** Loading screen while the 3D models download (progress 0..1, null hides it). */
+  loading(progress: number | null): void {
+    if (progress === null) {
+      const el = this.loadingEl;
+      if (el) {
+        el.classList.add('done');
+        window.setTimeout(() => el.remove(), 600);
+      }
+      this.loadingEl = null;
+      return;
+    }
+    if (!this.loadingEl) {
+      this.loadingEl = h(
+        'div',
+        'loading',
+        `<div class="logo-badge">${ICON_TOKEN}</div><div class="loading-title">${GAME_TITLE}</div><div class="bar"><i></i></div><small>Pouring concrete…</small>`,
+      );
+      this.root.appendChild(this.loadingEl);
+    }
+    const bar = this.loadingEl.querySelector<HTMLElement>('.bar i');
+    if (bar) bar.style.width = `${Math.round(progress * 100)}%`;
   }
 
   countdown(n: number): void {

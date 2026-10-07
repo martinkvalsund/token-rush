@@ -31,3 +31,17 @@ export const POWERUP_COLORS: Record<PowerupType, string> = {
   boots: '#ffc72c',
   mystery: '#ff6b1a',
 };
+
+const icon = (path: string) =>
+  `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+export const ICON_PLAY = `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg>`;
+export const ICON_HELP = icon(
+  '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.2-2.5 3.9"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
+);
+export const ICON_GEAR = icon(
+  '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M5.5 18.5l1.7-1.7M16.8 7.2l1.7-1.7"/>',
+);
+export const ICON_STATS = icon('<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>');
+export const ICON_PAUSE = icon(
+  '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>',
+);
