@@ -304,6 +304,51 @@ export class UI {
     for (const el of [this.warnLeft, this.warnCenter, this.warnRight]) el.classList.remove('on');
   }
 
+  private readonly fpsEl = h('div', 'fps');
+  private readonly popups: HTMLElement[] = [];
+  private popupIndex = 0;
+
+  /** Show or hide the FPS counter (null hides). */
+  setFps(fps: number | null): void {
+    if (!this.fpsEl.isConnected) this.root.appendChild(this.fpsEl);
+    this.fpsEl.style.display = fps === null ? 'none' : 'block';
+    if (fps !== null) this.fpsEl.textContent = `${Math.round(fps)} fps`;
+  }
+
+  /** Floating "+10" style score popup above the runner. */
+  popup(text: string): void {
+    if (this.popups.length === 0)
+      for (let i = 0; i < 6; i++) {
+        const el = h('div', 'popup');
+        this.hud.appendChild(el);
+        this.popups.push(el);
+      }
+    const el = this.popups[this.popupIndex++ % this.popups.length];
+    if (!el) return;
+    el.textContent = text;
+    el.style.left = `${46 + Math.random() * 8}%`;
+    el.classList.remove('go');
+    void el.offsetWidth;
+    el.classList.add('go');
+  }
+
+  /** Celebrate a new highscore with falling confetti. */
+  confetti(): void {
+    const layer = h('div', 'confetti');
+    const colors = ['#ffc72c', '#ff6b1a', '#c6ff00', '#5ad1ff', '#ff7a59', '#ffffff'];
+    for (let i = 0; i < 90; i++) {
+      const c = h('i');
+      c.style.left = `${Math.random() * 100}%`;
+      c.style.background = colors[i % colors.length] ?? '#fff';
+      c.style.animationDelay = `${Math.random() * 0.8}s`;
+      c.style.animationDuration = `${1.8 + Math.random() * 1.6}s`;
+      c.style.transform = `rotate(${Math.random() * 360}deg)`;
+      layer.appendChild(c);
+    }
+    this.root.appendChild(layer);
+    window.setTimeout(() => layer.remove(), 4000);
+  }
+
   toast(text: string, seconds = 1.6): void {
     this.toastEl.textContent = text;
     this.toastEl.classList.add('on');

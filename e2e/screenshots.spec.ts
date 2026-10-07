@@ -19,6 +19,15 @@ test('capture screenshots', async ({ page }) => {
   await page.goto('/?seed=11');
   await page.waitForTimeout(800);
   await shot(page, 'menu');
+  await page.getByRole('button', { name: 'Settings' }).click();
+  await page.waitForTimeout(300);
+  await shot(page, 'settings');
+  await page.getByRole('button', { name: 'Back', exact: true }).first().click();
+  await page.getByRole('button', { name: 'How to play' }).click();
+  await page.waitForTimeout(300);
+  await shot(page, 'help');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
   await page.keyboard.press('Enter');
   await page.waitForTimeout(1200);
   await shot(page, 'countdown');
