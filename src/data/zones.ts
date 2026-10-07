@@ -189,6 +189,8 @@ export const ZONES: readonly ZoneDef[] = [
     },
     scenery: [{ model: 'floodlight_tower', chance: 0.08, minX: 5.6, maxX: 5.8 }],
     frame: { model: 'bridge_truss', everyRows: 3 },
+    // Truss top beams and lamps sit at about 6.3–7 m.
+    ceiling: 7,
     look: {
       skyTop: 0x05070f,
       skyBottom: 0x1b2440,

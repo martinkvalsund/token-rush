@@ -185,3 +185,22 @@ describe('jetpack in the tunnel', () => {
     expect(headAtMouth).toBeLessThan((ZONES[1]?.ceiling ?? 0) - 1);
   });
 });
+
+describe('jetpack on the bridge', () => {
+  it('flies under the bridge trusses', () => {
+    const sim = new Sim(8);
+    sim.god = true;
+    sim.distance = TUNING.world.zoneLength * 4 + 50; // zone 4 is the bridge
+    for (const pool of Object.values(sim.world)) pool.clear();
+    sim.generator.cursor = 1e9;
+    sim.activate('jetpack');
+    let maxHead = 0;
+    for (let t = 0; t < 3; t += dt) {
+      sim.step(dt);
+      sim.events.clear();
+      maxHead = Math.max(maxHead, sim.player.y + TUNING.player.height);
+    }
+    expect(maxHead).toBeLessThan((ZONES[4]?.ceiling ?? 0) - 1);
+    expect(sim.player.y).toBeGreaterThan(3.1); // above the tallest bridge vehicles (3.0 m)
+  });
+});
