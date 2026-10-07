@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { PATTERN_DEFS } from '../src/data/patterns';
 import { buildPatterns } from '../src/sim/pattern';
-import { validateJunction, validatePattern } from '../src/sim/fairness';
+import {
+  propagate,
+  startStates,
+  timingFor,
+  validateJunction,
+  validatePattern,
+} from '../src/sim/fairness';
+import { tierSpeedRange } from '../src/sim/difficulty';
 
 const patterns = buildPatterns(PATTERN_DEFS);
 
@@ -27,17 +34,23 @@ describe('patterns', () => {
         expect(validateJunction(a, rest, tier).reason ?? 'ok').toBe('ok');
   });
 
-  it('most pattern pairs join fairly', () => {
+  it('most pattern pairs join fairly', { timeout: 60_000 }, () => {
     let total = 0;
     let bad = 0;
     for (const tier of [0, 4, 8]) {
       const live = patterns.filter((p) => p.minTier <= tier && tier <= p.maxTier);
-      for (const a of live)
-        for (const b of live) {
-          if (!a.zones.some((z) => b.zones.includes(z))) continue;
-          total++;
-          if (!validateJunction(a, b, tier).ok) bad++;
+      const r = tierSpeedRange(tier);
+      for (const speed of [r.min, r.max]) {
+        const tm = timingFor(speed);
+        for (const a of live) {
+          const mid = propagate(a.rows, startStates(), tm);
+          for (const b of live) {
+            if (!a.zones.some((z) => b.zones.includes(z))) continue;
+            total++;
+            if (propagate(b.rows, mid, tm).length === 0) bad++;
+          }
         }
+      }
     }
     // Unfair joins are rejected at runtime; there must still be plenty of variety.
     expect(bad / total).toBeLessThan(0.1);
