@@ -16,6 +16,7 @@ import { View } from './render/view';
 import { Post } from './render/post';
 import { AdaptiveQuality, type Level } from './render/quality';
 import { installGestures } from './core/gestures';
+import { Bot, PERFECT } from './sim/bot';
 import { buildSettings } from './ui/settings';
 import { buildHelp } from './ui/help';
 import type { Pose } from './render/character';
@@ -42,6 +43,8 @@ export class Game {
   private readonly params: URLSearchParams;
   private readonly library = new ModelLibrary(() => paletteMaterial());
   private view: View | null = null;
+  /** Autoplay (?bot=1): plays the game for demos, soak tests and screenshots. */
+  private readonly bot: Bot | null;
   private post: Post | null = null;
   private readonly quality = new AdaptiveQuality((l) => this.applyQuality(l));
   private fpsAcc = 0;
@@ -75,6 +78,7 @@ export class Game {
   constructor(canvas: HTMLCanvasElement, params: URLSearchParams) {
     this.params = params;
     this.sim = new Sim(seedFromUrl(window.location.search));
+    this.bot = params.get('bot') === '1' ? new Bot(PERFECT) : null;
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
@@ -85,6 +89,8 @@ export class Game {
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    // Count draw calls across all passes (shadow + scene + post) per frame.
+    this.renderer.info.autoReset = false;
     this.debug = new DebugOverlay(this.renderer, params.get('debug') === '1');
     if (params.get('debug') === '1') this.debugKeys();
 
@@ -321,6 +327,7 @@ export class Game {
     this.prevGap = this.sim.gap;
     this.stumbleAge = 99;
     this.view?.resetScroll();
+    this.bot?.reset();
     this.ui.clearWarnings();
     this.music.zone = 0;
     this.music.tier = 0;
@@ -343,6 +350,7 @@ export class Game {
       if (this.countdownLeft <= 0) this.machine.go('Playing');
       return;
     }
+    if (state === 'Playing' && this.bot) this.bot.update(this.sim, dt);
     if (state === 'Playing' || state === 'Crashing') this.sim.step(dt);
     if (state === 'Playing' && !this.sim.alive) this.machine.go('Crashing');
     if (state === 'Crashing' && this.sim.deadTime > 1.6) this.machine.go('GameOver');
@@ -398,6 +406,7 @@ export class Game {
   private render(alpha: number, frameDt: number): void {
     const view = this.view;
     if (!view) return;
+    this.renderer.info.reset();
     this.consumeEvents(view);
     const sim = this.sim;
     const p = sim.player;

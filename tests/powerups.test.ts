@@ -140,7 +140,8 @@ describe('power-ups', () => {
       sim.events.clear();
     }
     const spawned = sim.generator.spawnedPowerups;
-    expect(spawned.length).toBeGreaterThan(3);
+    // ~6 km in 4 minutes with one every 350-600 m (+ up to 120 m slack).
+    expect(spawned.length).toBeGreaterThanOrEqual(8);
     for (let i = 1; i < spawned.length; i++) expect(spawned[i]).not.toBe(spawned[i - 1]);
     expect(seen.length).toBeGreaterThan(0);
   });
