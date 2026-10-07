@@ -2,7 +2,11 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: 'e2e',
-  timeout: 60_000,
+  timeout: 90_000,
+  // Software WebGL renders the full post stack slowly; parallel browsers starve each other.
+  workers: 1,
+  // Model loading can take a few seconds under software WebGL.
+  expect: { timeout: 20_000 },
   use: {
     baseURL: 'http://localhost:5173',
     viewport: { width: 1280, height: 720 },

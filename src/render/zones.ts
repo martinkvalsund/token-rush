@@ -114,11 +114,15 @@ export class ZoneLook {
     this.sun.intensity = THREE.MathUtils.lerp(la.sunIntensity, lb.sunIntensity, t);
     lerpColor(this.hemi.color, la.ambientSky, lb.ambientSky, t);
     lerpColor(this.hemi.groundColor, la.ambientGround, lb.ambientGround, t);
-    this.hemi.intensity = THREE.MathUtils.lerp(la.ambientIntensity, lb.ambientIntensity, t);
+    // The environment map now supplies part of the ambient light.
+    this.hemi.intensity = THREE.MathUtils.lerp(la.ambientIntensity, lb.ambientIntensity, t) * 0.7;
     lerpColor(this.road.color, la.road, lb.road, t);
     this.road.color.multiplyScalar(1.6); // the road texture is light grey; tint it
     lerpColor(this.ground.color, la.ground, lb.ground, t);
     const enclosed = (la.skyMode === 1 ? 1 - t : 0) + (lb.skyMode === 1 ? t : 0);
+    const night = (la.skyMode === 2 ? 1 - t : 0) + (lb.skyMode === 2 ? t : 0);
+    // Reflections: bright outdoors by day, dimmer in the tunnel and at night.
+    this.scene.environmentIntensity = 0.32 - enclosed * 0.16 - night * 0.2;
     this.skyline.visible = enclosed < 0.5;
     const dirA = la.sunDir;
     const dirB = lb.sunDir;

@@ -14,6 +14,7 @@ import { MODEL_NAMES } from './render/models/manifest';
 import { paletteMaterial } from './render/palette';
 import { View } from './render/view';
 import { Post } from './render/post';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { AdaptiveQuality, type Level } from './render/quality';
 import { installGestures, setPointerCapture } from './core/gestures';
 import { Bot, PERFECT } from './sim/bot';
@@ -157,6 +158,10 @@ export class Game {
     await this.library.loadAll(MODEL_NAMES);
     this.view = new View(this.library);
     this.post = new Post(this.renderer, this.view.scene, this.view.rig.camera);
+    // Soft studio reflections for every material (tinted per zone by environmentIntensity).
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.view.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
     this.onSettingsChanged();
     this.resize();
     this.machine.go('Menu');
@@ -208,7 +213,10 @@ export class Game {
       level === 'high' ? Math.min(dpr, 2) : level === 'medium' ? Math.min(dpr, 1.5) : 1,
     );
     this.renderer.shadowMap.enabled = level !== 'low';
-    if (this.post) this.post.enabled = level !== 'low';
+    if (this.post) {
+      this.post.enabled = level !== 'low';
+      this.post.setAmbientOcclusion(level === 'high');
+    }
     this.view?.applyQuality(level);
     this.resize();
   }
