@@ -30,6 +30,11 @@ export interface SaveData {
   loadout: Loadout;
   /** Local date (YYYY-MM-DD) the daily crate was last opened. */
   lastDaily: string;
+  /** Global leaderboard identity: random per-device id and display name ('' = not joined). */
+  playerId: string;
+  playerName: string;
+  /** Best score the leaderboard has accepted from this device. */
+  postedBest: number;
   settings: Settings;
 }
 
@@ -67,6 +72,9 @@ export function defaultSave(): SaveData {
     owned: [],
     loadout: { ...DEFAULT_LOADOUT },
     lastDaily: '',
+    playerId: '',
+    playerName: '',
+    postedBest: 0,
     settings: { ...DEFAULT_SETTINGS },
   };
 }
@@ -115,6 +123,9 @@ export function parseSave(raw: string | null): SaveData {
       : [],
     loadout,
     lastDaily: typeof d.lastDaily === 'string' ? d.lastDaily : '',
+    playerId: typeof d.playerId === 'string' ? d.playerId : '',
+    playerName: typeof d.playerName === 'string' ? d.playerName : '',
+    postedBest: num(d.postedBest, 0),
     settings: {
       controls: pick(s.controls, ['keys', 'trackpad'], def.controls),
       swipeSensitivity: num(s.swipeSensitivity, def.swipeSensitivity, 0.25, 3),
@@ -179,9 +190,19 @@ export class Storage {
     return best;
   }
 
+  /** The leaderboard id for this device, created on first use. */
+  playerId(): string {
+    if (!this.data.playerId) {
+      this.data.playerId = newId();
+      this.save();
+    }
+    return this.data.playerId;
+  }
+
   reset(): void {
-    const settings = this.data.settings;
-    this.data = { ...defaultSave(), settings };
+    // Progress resets; the leaderboard identity stays so the player keeps their board entry.
+    const { settings, playerId, playerName, postedBest } = this.data;
+    this.data = { ...defaultSave(), settings, playerId, playerName, postedBest };
     try {
       this.store?.removeItem(STORAGE_KEY);
     } catch {
@@ -193,6 +214,15 @@ export class Storage {
   get raw(): string | null {
     return this.memory;
   }
+}
+
+function newId(): string {
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+  const hex = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join(
+    '',
+  );
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
 function safeLocalStorage(): KeyValueStore | null {

@@ -56,3 +56,6 @@ export const ICON_GIFT = icon(
   '<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M3 9h18M12 9v11M12 9c-1.5-4-6-4-5.5-1.2C7 9 12 9 12 9zM12 9c1.5-4 6-4 5.5-1.2C17 9 12 9 12 9z"/>',
 );
 export const ICON_BACK = icon('<path d="M15 5l-7 7 7 7"/>');
+export const ICON_TROPHY = icon(
+  '<path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H4.5a3 3 0 0 0 3.5 4M16 6h3.5a3 3 0 0 1-3.5 4"/><path d="M12 13v4M8.5 20.5h7M9.5 17h5v3.5h-5z"/>',
+);

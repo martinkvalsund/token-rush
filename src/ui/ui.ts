@@ -9,6 +9,7 @@ import {
   ICON_SHOP,
   ICON_STATS,
   ICON_TOKEN,
+  ICON_TROPHY,
   POWERUP_COLORS,
   POWERUP_ICONS,
   POWERUP_NAMES,
@@ -16,10 +17,29 @@ import {
 import type { TimedPowerup } from '../sim/powerups';
 
 export type UiAction =
-  'play' | 'resume' | 'quit' | 'retry' | 'menu' | 'settings' | 'help' | 'stats' | 'shop' | 'back';
+  | 'play'
+  | 'resume'
+  | 'quit'
+  | 'retry'
+  | 'menu'
+  | 'settings'
+  | 'help'
+  | 'stats'
+  | 'shop'
+  | 'leaderboard'
+  | 'back';
 
 export type ScreenName =
-  'menu' | 'hud' | 'pause' | 'gameover' | 'stats' | 'settings' | 'help' | 'shop' | 'none';
+  | 'menu'
+  | 'hud'
+  | 'pause'
+  | 'gameover'
+  | 'stats'
+  | 'settings'
+  | 'help'
+  | 'shop'
+  | 'leaderboard'
+  | 'none';
 
 export interface RunResult {
   score: number;
@@ -83,6 +103,8 @@ export class UI {
   private readonly bestEl = h('div', 'best');
   private readonly gameOverEl = h('div', 'panel');
   private readonly statsEl = h('dl', 'stats');
+  /** Game-over slot the game fills with the leaderboard prompt or posting status. */
+  readonly runBoardEl = h('div', 'run-board');
 
   constructor(parent: HTMLElement = document.body) {
     parent.appendChild(this.root);
@@ -139,10 +161,12 @@ export class UI {
     const play = this.button(`${ICON_PLAY}<span>Play</span>`, 'play');
     play.classList.add('play');
     const grid = h('div', 'menu-grid');
-    const shop = this.button(`${ICON_SHOP}<span>Shop</span>`, 'shop', true);
-    shop.classList.add('shop-btn');
+    const feature = h('div', 'menu-feature');
+    feature.append(
+      this.button(`${ICON_SHOP}<span>Shop</span>`, 'shop', true),
+      this.button(`${ICON_TROPHY}<span>Leaderboard</span>`, 'leaderboard', true),
+    );
     grid.append(
-      shop,
       this.button(`${ICON_HELP}<span>How to play</span>`, 'help', true),
       this.button(`${ICON_GEAR}<span>Settings</span>`, 'settings', true),
       this.button(`${ICON_STATS}<span>Stats</span>`, 'stats', true),
@@ -152,6 +176,7 @@ export class UI {
       h('div', 'hazard'),
       h('p', 'tagline', 'Collect tokens. Dodge tech debt. Ship it.'),
       play,
+      feature,
       grid,
       this.bestEl,
       h(
@@ -284,10 +309,12 @@ export class UI {
       this.button(`${ICON_SHOP}<span>Shop</span>`, 'shop', true),
       this.button('Menu', 'menu', true),
     );
+    this.runBoardEl.innerHTML = '';
     p.append(
       stats,
       joke,
       bank,
+      this.runBoardEl,
       row,
       h(
         'div',

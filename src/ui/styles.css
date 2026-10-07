@@ -62,6 +62,13 @@ canvas#game {
   flex: none;
 }
 
+/* Panels size to the viewport including their padding (no overflow on phones). */
+.panel,
+.shop-panel,
+.name-field input {
+  box-sizing: border-box;
+}
+
 /* ---------- Shared glass surfaces ---------- */
 .card,
 .panel,
@@ -247,7 +254,7 @@ canvas#game {
 }
 .menu-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
 }
@@ -774,12 +781,22 @@ canvas#game {
 }
 
 /* ---------- Shop ---------- */
-.menu-grid {
-  grid-template-columns: repeat(4, 1fr);
+.menu-feature {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
 }
-.menu-grid .shop-btn {
+.menu-feature .btn {
+  font-size: 17px;
+  padding: 13px 10px;
   border-color: rgba(255, 199, 44, 0.45);
   background: rgba(255, 199, 44, 0.12);
+}
+.menu-feature .btn .ico {
+  width: 22px;
+  height: 22px;
+  color: var(--yellow);
 }
 .bank {
   margin: -6px 0 2px;
@@ -799,6 +816,7 @@ canvas#game {
   height: min(90vh, 780px);
   display: grid;
   grid-template-rows: auto auto auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding: 18px;
   border-radius: 24px;
@@ -1136,6 +1154,244 @@ canvas#game {
   }
 }
 
+/* ---------- Leaderboard ---------- */
+.lb-panel {
+  width: min(620px, 94vw);
+  max-height: 90vh;
+  grid-template-rows: auto auto auto 1fr;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  justify-items: stretch;
+  text-align: left;
+  gap: 12px;
+  overflow: hidden;
+}
+.lb-head {
+  display: grid;
+  grid-template-columns: 42px 1fr 42px;
+  align-items: center;
+}
+.lb-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.lb-title .ico {
+  width: 32px;
+  height: 32px;
+  color: var(--yellow);
+}
+.lb-name {
+  display: grid;
+  gap: 6px;
+}
+.lb-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.name-field {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  width: 100%;
+}
+.name-field input {
+  font: inherit;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: 0.03em;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--stroke-strong);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  user-select: text;
+  -webkit-user-select: text;
+}
+.name-field input:focus {
+  outline: none;
+  border-color: var(--yellow);
+  box-shadow: 0 0 0 3px rgba(255, 199, 44, 0.25);
+}
+.name-field .btn {
+  min-width: 0;
+  font-size: 16px;
+  padding: 10px 18px;
+}
+.name-msg {
+  grid-column: 1 / -1;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.name-msg:empty {
+  display: none;
+}
+.name-msg.err,
+.lb-status.err {
+  color: var(--coral);
+}
+.lb-status {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.lb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+.lb-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto 92px;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px 7px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  animation: rise-in 0.35s var(--ease) both;
+}
+.lb-row .rank {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 18px;
+  text-align: center;
+  color: var(--muted);
+}
+.lb-row.top1 .rank,
+.lb-row.top2 .rank,
+.lb-row.top3 .rank {
+  width: 30px;
+  height: 30px;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #1a1300;
+}
+.lb-row.top1 .rank {
+  background: linear-gradient(180deg, #fff3c4, #ffc72c);
+  box-shadow: 0 0 16px rgba(255, 199, 44, 0.5);
+}
+.lb-row.top2 .rank {
+  background: linear-gradient(180deg, #f2f4f7, #a3a8af);
+}
+.lb-row.top3 .rank {
+  background: linear-gradient(180deg, #ffc69a, #c8743a);
+}
+.lb-row .who {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.lb-row .avatar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  box-shadow: inset 0 -10px 14px rgba(0, 0, 0, 0.35);
+}
+.lb-row .avatar img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+}
+.lb-row .nm {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-row .me {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: #102000;
+  background: var(--lime);
+}
+.lb-row .dist {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.lb-row .score {
+  font-family: var(--display);
+  font-size: 20px;
+  text-align: right;
+}
+.lb-row.you {
+  background: rgba(198, 255, 0, 0.08);
+  border-color: rgba(198, 255, 0, 0.45);
+}
+.lb-gap {
+  text-align: center;
+  color: var(--muted);
+}
+.run-board {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+}
+.run-board > .lb-label,
+.run-board > .name-field {
+  flex: 1 1 100%;
+  text-align: center;
+}
+.run-board > .btn.secondary {
+  font-size: 13px;
+  padding: 9px 14px;
+}
+.run-board:empty {
+  display: none;
+}
+.run-board .name-field {
+  max-width: 420px;
+}
+.run-board .posted {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--stroke);
+}
+.run-board .posted .ico {
+  color: var(--yellow);
+}
+.run-board .posted b {
+  font-family: var(--display);
+  font-size: 18px;
+  color: var(--yellow);
+}
+.run-board .posted.err {
+  color: var(--coral);
+}
+
 /* ---------- Confetti ---------- */
 .confetti {
   position: fixed;
@@ -1238,9 +1494,6 @@ canvas#game {
     place-items: end center;
     padding: 0 16px 24px;
   }
-  .menu-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
   .shop {
     place-items: end center;
     padding: 0 10px 10px;
@@ -1263,6 +1516,24 @@ canvas#game {
   .btn.shop-action {
     min-width: 130px;
     font-size: 15px;
+  }
+  .lb-row {
+    grid-template-columns: 34px minmax(0, 1fr) 78px;
+  }
+  .lb-panel {
+    padding: 22px 16px;
+  }
+  .menu-feature .btn {
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    padding: 12px 6px;
+  }
+  .tagline {
+    white-space: normal;
+    font-size: 13px;
+  }
+  .lb-row .dist {
+    display: none;
   }
   .statcards {
     grid-template-columns: repeat(2, minmax(0, 1fr));

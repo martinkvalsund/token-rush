@@ -57,6 +57,10 @@ Trackpad play needs no clicking, like swiping on a phone: in the Trackpad scheme
   - Particle trails.
   - Free skin tones and hair colours.
   - A daily crate of free tokens.
+- **Global leaderboard:** enter a name on the game-over screen (or under Leaderboard) and your best run is posted to a shared top 50.
+  - Each row shows the player's name, headgear and outfit colour.
+  - The server keeps one best run per device, rejects runs whose score cannot fit their distance and time, filters names and rate-limits writes.
+  - Autoplay (`?bot=1`) and debug runs are never posted.
 - **Saved locally:** highscore, best distance, total tokens ("enough tokens for N prompts"), the shop wallet, items bought and equipped, and all settings.
 
 ## Development
@@ -69,7 +73,8 @@ Trackpad play needs no clicking, like swiping on a phone: in the Trackpad scheme
 | `npm run soak` | Perfect autoplay bot, 24 seeds × 4 minutes (fairness soak) |
 | `npm run balance` | Non-perfect bot, median run length (difficulty target) |
 | `npm run media` | Regenerates the README screenshots and GIF |
-| `npm run deploy` | Builds and deploys to Cloudflare Workers (static assets, `wrangler.jsonc`); needs `npx wrangler login` |
+| `npm run deploy` | Builds, applies D1 migrations and deploys to Cloudflare Workers (`wrangler.jsonc`); needs `npx wrangler login` |
+| `npm run dev:full` | Production build plus the leaderboard Worker and a local D1 database at http://localhost:8787 (`npm run dev` has no API; the leaderboard then shows "offline") |
 
 URL flags: `?seed=123` (reproducible run), `?debug=1` (overlay plus hotkeys: G god mode, 1–6 power-ups, T slow motion, N next zone, K faster), `?bot=1` (autoplay).
 
@@ -85,11 +90,24 @@ src/
   ui/       DOM overlays: menu, HUD, settings, help, pause, game over
   data/     tuning.ts (every gameplay number), patterns, zones, obstacles, signs, shop catalogue
 art/        Blender build scripts, palette and the .blend source
+worker/     Cloudflare Worker for /api/* (leaderboard API on D1); migrations/ holds the schema
 ```
 
 - The simulation runs at a fixed 60 Hz and the renderer interpolates. The world is a treadmill: the player stays at z = 0 and the track moves.
 - **Fairness:** the track is built from hand-authored patterns (`src/data/patterns.ts`). A row-level reachability search (`sim/fairness.ts`) checks every pattern at every tier it can appear in. At runtime, every join between patterns is checked at several speeds across the tier, and from every lane the player could be in.
 - **Autoplay bot:** `sim/bot.ts` uses the same search to play the game. It drives the soak and balance runs.
+
+### Leaderboard
+
+Static files are served straight from Cloudflare's asset store; only `/api/*` runs the Worker (`run_worker_first`). The API:
+
+| Route | Does |
+|---|---|
+| `GET /api/leaderboard?id=…` | Top 50 plus the caller's own row and rank |
+| `POST /api/score` | Submits a finished run (best per player) |
+| `POST /api/name` | Changes the caller's display name |
+
+The validation rules, name filter and plausibility check live in `src/core/scoreRules.ts` and are shared by the game and the Worker. The request handling (`worker/api.ts`) is unit-tested against an in-memory store. Players are identified by a random id stored on the device; there are no accounts.
 
 ### Tuning
 
