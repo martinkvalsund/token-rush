@@ -1,12 +1,20 @@
 """Build (and optionally export) all Token Rush assets.
 
-Run inside Blender:  exec(open('<repo>/art/blender/build.py').read())
+Run inside Blender's Python console:
+
+    TOKEN_RUSH_ROOT = '/path/to/token-rush'
+    exec(open(TOKEN_RUSH_ROOT + '/art/blender/build.py').read())
+
 Set ONLY = ['token', ...] before exec to rebuild a subset; EXPORT = False to skip export.
+The repo root can also come from the TOKEN_RUSH_ROOT environment variable.
 """
 
 import os
 
-_root = os.environ.get("TOKEN_RUSH_ROOT", "/Users/martinkvalsund/Documents/code/skanska/techlab/blender")
+_root = globals().get("TOKEN_RUSH_ROOT") or os.environ.get("TOKEN_RUSH_ROOT")
+if not _root:
+    raise RuntimeError("Set TOKEN_RUSH_ROOT to the repository path before running build.py")
+TOKEN_RUSH_ROOT = _root
 _g = globals()
 for _f in ("lib.py", "props.py", "vehicles.py", "scenery.py", "character.py"):
     _path = os.path.join(_root, "art", "blender", _f)

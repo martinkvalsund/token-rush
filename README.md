@@ -93,7 +93,8 @@ Every object in the game is modelled in Blender by the scripts in [`art/blender/
 To rebuild and re-export all models into `public/models/`, run this in Blender's Python console:
 
 ```python
-exec(open('/path/to/repo/art/blender/build.py').read())
+TOKEN_RUSH_ROOT = '/path/to/token-rush'
+exec(open(TOKEN_RUSH_ROOT + '/art/blender/build.py').read())
 ```
 
 Set `ONLY = ['excavator']` first to rebuild a subset. `art/token-rush-assets.blend` holds the generated sources. If a `.glb` is missing, the game falls back to labelled boxes.
