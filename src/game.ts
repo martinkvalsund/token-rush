@@ -155,7 +155,8 @@ export class Game {
 
   /** Load the Blender models, build the 3D view, then show the menu. */
   async start(): Promise<void> {
-    await this.library.loadAll(MODEL_NAMES);
+    this.ui.loading(0);
+    await this.library.loadAll(MODEL_NAMES, (f) => this.ui.loading(f));
     this.view = new View(this.library);
     this.post = new Post(this.renderer, this.view.scene, this.view.rig.camera);
     // Soft studio reflections for every material (tinted per zone by environmentIntensity).
@@ -166,6 +167,7 @@ export class Game {
     this.resize();
     this.machine.go('Menu');
     this.loop.start();
+    this.ui.loading(null);
   }
 
   /** Debug hotkeys (?debug=1): G god mode, 1-6 power-ups, T slow motion, N next zone, K faster. */

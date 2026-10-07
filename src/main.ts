@@ -1,5 +1,7 @@
 import '@fontsource/rajdhani/600.css';
 import '@fontsource/rajdhani/700.css';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/600.css';
 import './ui/styles.css';
 import { GAME_TITLE } from './data/tuning';
 import { Game } from './game';

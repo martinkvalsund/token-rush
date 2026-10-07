@@ -31,8 +31,10 @@ export class ModelLibrary {
 
   async loadAll(
     names: readonly string[],
+    onProgress: (fraction: number) => void = () => undefined,
     base = `${import.meta.env.BASE_URL}models/`,
   ): Promise<void> {
+    let done = 0;
     await Promise.all(
       names.map(async (name) => {
         try {
@@ -41,6 +43,7 @@ export class ModelLibrary {
         } catch {
           // Missing model: a fallback is created on first use.
         }
+        onProgress(++done / names.length);
       }),
     );
   }
