@@ -1,6 +1,7 @@
 import { COMPANY_NAME, GAME_TITLE, TUNING } from '../data/tuning';
 import type { SaveData } from '../core/storage';
-import { ICON_HAT, ICON_TOKEN } from './icons';
+import { ICON_HAT, ICON_TOKEN, POWERUP_COLORS, POWERUP_ICONS, POWERUP_NAMES } from './icons';
+import type { TimedPowerup } from '../sim/powerups';
 
 export type UiAction =
   'play' | 'resume' | 'quit' | 'retry' | 'menu' | 'settings' | 'help' | 'stats' | 'back';
@@ -61,6 +62,10 @@ export class UI {
   readonly warnCenter = h('div', 'warn', '▼');
   private last: HudState = { score: -1, distance: -1, tokens: -1, lives: -1, multiplier: -1 };
 
+  private readonly puSlots = new Map<
+    TimedPowerup,
+    { el: HTMLElement; ring: SVGCircleElement; last: number }
+  >();
   private readonly bestEl = h('div', 'best');
   private readonly gameOverEl = h('div', 'panel');
   private readonly statsEl = h('dl', 'stats');
@@ -247,6 +252,34 @@ export class UI {
     l.tokens = s.tokens;
     l.lives = s.lives;
     l.multiplier = s.multiplier;
+  }
+
+  /** Show active power-ups with draining rings; `left` is a 0..1 fraction per type. */
+  updatePowerups(
+    left: Record<TimedPowerup, number>,
+    blink: Partial<Record<TimedPowerup, boolean>>,
+  ): void {
+    for (const t of Object.keys(left) as TimedPowerup[]) {
+      const f = left[t];
+      let slot = this.puSlots.get(t);
+      if (!slot) {
+        const el = h('div', 'pu');
+        el.title = POWERUP_NAMES[t];
+        const c = 2 * Math.PI * 25;
+        el.innerHTML = `<svg class="ring" viewBox="0 0 58 58"><circle cx="29" cy="29" r="25" fill="rgba(16,20,26,.75)" stroke="rgba(255,255,255,.15)" stroke-width="5"/><circle class="arc" cx="29" cy="29" r="25" fill="none" stroke="${POWERUP_COLORS[t]}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="0"/></svg><div class="icon">${POWERUP_ICONS[t]}</div>`;
+        const ring = el.querySelector<SVGCircleElement>('circle.arc');
+        if (!ring) continue;
+        this.powerupBar.appendChild(el);
+        slot = { el, ring, last: -1 };
+        this.puSlots.set(t, slot);
+      }
+      const q = Math.round(f * 200) / 200;
+      if (q === slot.last) continue;
+      slot.last = q;
+      slot.el.style.display = f > 0 ? 'grid' : 'none';
+      slot.ring.style.strokeDashoffset = String(2 * Math.PI * 25 * (1 - f));
+      slot.el.style.opacity = blink[t] && Math.floor(performance.now() / 120) % 2 ? '0.35' : '1';
+    }
   }
 
   countdown(n: number): void {

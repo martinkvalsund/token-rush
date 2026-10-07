@@ -5,8 +5,7 @@ type G = {
   sim: {
     god: boolean;
     distance: number;
-    step: (dt: number) => void;
-    events: { clear: () => void };
+    activate: (t: string) => void;
   };
 };
 async function shot(page: Page, name: string) {
@@ -26,6 +25,15 @@ test('capture screenshots', async ({ page }) => {
   });
   await page.waitForTimeout(4000);
   await shot(page, 'playing');
+  await page.evaluate(() => {
+    const sim = (window as unknown as { __game: G }).__game.sim;
+    for (const t of ['magnet', 'double', 'shield', 'boots']) sim.activate(t);
+  });
+  await page.waitForTimeout(1500);
+  await shot(page, 'powerups');
+  await page.evaluate(() => (window as unknown as { __game: G }).__game.sim.activate('jetpack'));
+  await page.waitForTimeout(2000);
+  await shot(page, 'jetpack');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
   await shot(page, 'pause');
